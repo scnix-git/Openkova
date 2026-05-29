@@ -1,0 +1,19 @@
+{
+  "name": "openkova",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm --filter @openkova/core build && pnpm --filter @openkova/web build",
+    "dev": "pnpm --filter @openkova/core build && pnpm --filter @openkova/web dev",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "devDependencies": {
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  }
+}

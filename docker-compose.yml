@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      OPENKOVA_STORAGE_PATH: /data
+      OPENKOVA_GITHUB_URL: https://github.com/scnix-git/openkova
+    volumes:
+      - openkova_data:/data
+
+volumes:
+  openkova_data:
