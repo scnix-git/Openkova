@@ -1,0 +1,4 @@
+{
+  "buildCommand": "pnpm -C ../.. --filter @openkova/core build && next build",
+  "installCommand": "pnpm -C ../.. install --frozen-lockfile"
+}
