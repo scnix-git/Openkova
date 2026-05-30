@@ -30,8 +30,12 @@ export default function UrlInput({ sessionId, onConversionComplete }: Props) {
       });
 
       if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
-        throw new Error(data.error ?? `Server error ${res.status}`);
+        let message = `Server error ${res.status}`;
+        try {
+          const data = (await res.json()) as { error?: string };
+          if (data.error) message = data.error;
+        } catch {}
+        throw new Error(message);
       }
 
       const data = (await res.json()) as {
