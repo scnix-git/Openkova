@@ -18,12 +18,14 @@
     "test": "node --experimental-vm-modules --test dist/__tests__/*.test.js"
   },
   "dependencies": {
-    "puppeteer": "^22.0.0",
+    "@sparticuz/chromium": "^131.0.0",
+    "puppeteer-core": "^22.0.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/uuid": "^9.0.0",
+    "puppeteer": "^22.0.0",
     "typescript": "^5.0.0"
   }
 }
