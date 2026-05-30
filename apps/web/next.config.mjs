@@ -3,6 +3,7 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: [
       '@openkova/core',
+      '@sparticuz/chromium',
       'puppeteer',
       'puppeteer-core',
       '@puppeteer/browsers',
@@ -13,12 +14,12 @@ const nextConfig = {
   },
   webpack(config, { isServer }) {
     if (isServer) {
-      // Prevent bundling of native node modules that break in Webpack context
       const existingExternals = Array.isArray(config.externals) ? config.externals : [];
       config.externals = [
         ...existingExternals,
         ({ request }, callback) => {
           const nativePackages = [
+            '@sparticuz/chromium',
             'bufferutil',
             'utf-8-validate',
             'ws',
