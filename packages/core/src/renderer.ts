@@ -29,7 +29,7 @@ async function getLaunchOptions(): Promise<PuppeteerLaunchOptions> {
     launchOptionsCache = {
       args: chromium.args,
       executablePath: await chromium.executablePath(),
-      headless: true,
+      headless: chromium.headless as true | 'shell',
     };
     return launchOptionsCache;
   }
