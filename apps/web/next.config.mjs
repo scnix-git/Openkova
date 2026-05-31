@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
+    instrumentationHook: true,
     serverComponentsExternalPackages: [
       '@openkova/core',
       '@sparticuz/chromium',
@@ -11,6 +12,11 @@ const nextConfig = {
       'bufferutil',
       'utf-8-validate',
     ],
+  },
+  outputFileTracingIncludes: {
+    '/api/convert/snippet': ['./node_modules/@sparticuz/chromium/**/*'],
+    '/api/convert/file': ['./node_modules/@sparticuz/chromium/**/*'],
+    '/api/convert/url': ['./node_modules/@sparticuz/chromium/**/*'],
   },
   webpack(config, { isServer }) {
     if (isServer) {
