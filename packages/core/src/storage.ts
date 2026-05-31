@@ -12,9 +12,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   private readonly basePath: string;
 
   constructor(basePath?: string) {
-    const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
-    this.basePath =
-      basePath ?? process.env['OPENKOVA_STORAGE_PATH'] ?? (isServerless ? '/tmp/openkova' : './data');
+    this.basePath = basePath ?? process.env['OPENKOVA_STORAGE_PATH'] ?? './data';
   }
 
   private filePath(sessionId: string, imageId: string): string {
