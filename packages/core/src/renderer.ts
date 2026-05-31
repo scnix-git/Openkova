@@ -5,7 +5,7 @@ import { LocalStorageAdapter, type StorageAdapter } from './storage.js';
 const VIEWPORT = { width: 1280, height: 800 };
 const TIMEOUT = 30_000;
 
-const BASE_ARGS = [
+const ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
   '--disable-dev-shm-usage',
@@ -19,35 +19,22 @@ let launchOptionsCache: LaunchOptions | null = null;
 async function getLaunchOptions(): Promise<LaunchOptions> {
   if (launchOptionsCache) return launchOptionsCache;
 
-  // Serverless (Vercel / Lambda): use @sparticuz/chromium args.
-  // CHROMIUM_PATH is pre-set by instrumentation.ts during Lambda init;
-  // fall back to extracting the binary here if it wasn't pre-set.
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    const chromium = (await import('@sparticuz/chromium')).default;
-    launchOptionsCache = {
-      args: chromium.args,
-      executablePath: process.env.CHROMIUM_PATH ?? (await chromium.executablePath()),
-      headless: true,
-    };
-    return launchOptionsCache;
-  }
-
-  // Local override via env var (e.g. CI, Docker)
+  // Explicit path via env var (Docker / CI / Railway sets CHROMIUM_PATH)
   if (process.env.CHROMIUM_PATH) {
-    launchOptionsCache = { executablePath: process.env.CHROMIUM_PATH, args: BASE_ARGS, headless: true };
+    launchOptionsCache = { executablePath: process.env.CHROMIUM_PATH, args: ARGS, headless: true };
     return launchOptionsCache;
   }
 
-  // Local dev: try puppeteer's bundled Chrome (devDependency)
+  // Local dev: puppeteer devDependency bundles its own Chrome
   try {
     const { executablePath } = await import('puppeteer');
-    launchOptionsCache = { executablePath: await executablePath(), args: BASE_ARGS, headless: true };
+    launchOptionsCache = { executablePath: await executablePath(), args: ARGS, headless: true };
     return launchOptionsCache;
   } catch {
     // not installed, fall through
   }
 
-  // Last resort: common system Chrome paths
+  // Fallback: common system Chrome paths
   const { existsSync } = await import('fs');
   const systemPaths =
     process.platform === 'darwin'
@@ -60,8 +47,7 @@ async function getLaunchOptions(): Promise<LaunchOptions> {
             '/usr/bin/chromium-browser',
             '/usr/bin/chromium',
           ];
-  const found = systemPaths.find((p) => existsSync(p));
-  launchOptionsCache = { executablePath: found, args: BASE_ARGS, headless: true };
+  launchOptionsCache = { executablePath: systemPaths.find((p) => existsSync(p)), args: ARGS, headless: true };
   return launchOptionsCache;
 }
 
