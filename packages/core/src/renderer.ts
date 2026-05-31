@@ -1,4 +1,4 @@
-import puppeteer, { type Browser, type PuppeteerLaunchOptions } from 'puppeteer-core';
+import puppeteer, { type Browser, type LaunchOptions } from 'puppeteer-core';
 import { v4 as uuidv4 } from 'uuid';
 import { LocalStorageAdapter, type StorageAdapter } from './storage.js';
 
@@ -14,9 +14,9 @@ const BASE_ARGS = [
   '--no-zygote',
 ];
 
-let launchOptionsCache: PuppeteerLaunchOptions | null = null;
+let launchOptionsCache: LaunchOptions | null = null;
 
-async function getLaunchOptions(): Promise<PuppeteerLaunchOptions> {
+async function getLaunchOptions(): Promise<LaunchOptions> {
   if (launchOptionsCache) return launchOptionsCache;
 
   // Serverless (Vercel / Lambda): use @sparticuz/chromium args.
@@ -27,7 +27,7 @@ async function getLaunchOptions(): Promise<PuppeteerLaunchOptions> {
     launchOptionsCache = {
       args: chromium.args,
       executablePath: process.env.CHROMIUM_PATH ?? (await chromium.executablePath()),
-      headless: chromium.headless as true | 'shell',
+      headless: true,
     };
     return launchOptionsCache;
   }
@@ -41,7 +41,7 @@ async function getLaunchOptions(): Promise<PuppeteerLaunchOptions> {
   // Local dev: try puppeteer's bundled Chrome (devDependency)
   try {
     const { executablePath } = await import('puppeteer');
-    launchOptionsCache = { executablePath: executablePath(), args: BASE_ARGS, headless: true };
+    launchOptionsCache = { executablePath: await executablePath(), args: BASE_ARGS, headless: true };
     return launchOptionsCache;
   } catch {
     // not installed, fall through
@@ -115,7 +115,7 @@ export function createRenderer(storage: StorageAdapter) {
     const page = await browser.newPage();
     try {
       await page.setViewport(VIEWPORT);
-      await page.setContent(wrapHtml(html), { waitUntil: 'networkidle0', timeout: TIMEOUT });
+      await page.setContent(wrapHtml(html), { waitUntil: 'load', timeout: TIMEOUT });
       const buffer = await page.screenshot({ type: 'png', fullPage: false });
       await storage.save(sessionId, imageId, Buffer.from(buffer));
     } finally {

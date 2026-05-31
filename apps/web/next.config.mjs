@@ -1,20 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    instrumentationHook: true,
-    serverComponentsExternalPackages: [
-      '@openkova/core',
-      '@sparticuz/chromium',
-      'follow-redirects',
-      'tar-fs',
-      'puppeteer',
-      'puppeteer-core',
-      '@puppeteer/browsers',
-      'ws',
-      'bufferutil',
-      'utf-8-validate',
-    ],
-  },
+  serverExternalPackages: [
+    '@openkova/core',
+    '@sparticuz/chromium',
+    'tar-fs',
+    'puppeteer',
+    'puppeteer-core',
+    '@puppeteer/browsers',
+    'ws',
+    'bufferutil',
+    'utf-8-validate',
+  ],
   outputFileTracingIncludes: {
     '/api/convert/snippet': ['./node_modules/@sparticuz/chromium/**/*'],
     '/api/convert/file': ['./node_modules/@sparticuz/chromium/**/*'],
@@ -28,7 +24,6 @@ const nextConfig = {
         ({ request }, callback) => {
           const nativePackages = [
             '@sparticuz/chromium',
-            'follow-redirects',
             'tar-fs',
             'bufferutil',
             'utf-8-validate',
