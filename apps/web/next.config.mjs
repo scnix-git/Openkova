@@ -5,6 +5,8 @@ const nextConfig = {
     serverComponentsExternalPackages: [
       '@openkova/core',
       '@sparticuz/chromium',
+      'follow-redirects',
+      'tar-fs',
       'puppeteer',
       'puppeteer-core',
       '@puppeteer/browsers',
@@ -26,6 +28,8 @@ const nextConfig = {
         ({ request }, callback) => {
           const nativePackages = [
             '@sparticuz/chromium',
+            'follow-redirects',
+            'tar-fs',
             'bufferutil',
             'utf-8-validate',
             'ws',

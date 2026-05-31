@@ -19,31 +19,35 @@ let launchOptionsCache: PuppeteerLaunchOptions | null = null;
 async function getLaunchOptions(): Promise<PuppeteerLaunchOptions> {
   if (launchOptionsCache) return launchOptionsCache;
 
-  if (process.env.CHROMIUM_PATH) {
-    launchOptionsCache = { executablePath: process.env.CHROMIUM_PATH, args: BASE_ARGS, headless: true };
-    return launchOptionsCache;
-  }
-
+  // Serverless (Vercel / Lambda): use @sparticuz/chromium args.
+  // CHROMIUM_PATH is pre-set by instrumentation.ts during Lambda init;
+  // fall back to extracting the binary here if it wasn't pre-set.
   if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
     const chromium = (await import('@sparticuz/chromium')).default;
     launchOptionsCache = {
       args: chromium.args,
-      executablePath: await chromium.executablePath(),
+      executablePath: process.env.CHROMIUM_PATH ?? (await chromium.executablePath()),
       headless: chromium.headless as true | 'shell',
     };
     return launchOptionsCache;
   }
 
-  // Local dev: try puppeteer's bundled Chrome first (puppeteer is a devDependency)
+  // Local override via env var (e.g. CI, Docker)
+  if (process.env.CHROMIUM_PATH) {
+    launchOptionsCache = { executablePath: process.env.CHROMIUM_PATH, args: BASE_ARGS, headless: true };
+    return launchOptionsCache;
+  }
+
+  // Local dev: try puppeteer's bundled Chrome (devDependency)
   try {
     const { executablePath } = await import('puppeteer');
     launchOptionsCache = { executablePath: executablePath(), args: BASE_ARGS, headless: true };
     return launchOptionsCache;
   } catch {
-    // not installed — fall through to system paths
+    // not installed, fall through
   }
 
-  // Fall back to common system Chrome locations
+  // Last resort: common system Chrome paths
   const { existsSync } = await import('fs');
   const systemPaths =
     process.platform === 'darwin'

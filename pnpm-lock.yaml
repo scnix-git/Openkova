@@ -23,6 +23,9 @@ importers:
       '@sparticuz/chromium':
         specifier: ^131.0.0
         version: 131.0.1
+      follow-redirects:
+        specifier: ^1.15.9
+        version: 1.16.0
       next:
         specifier: ^14.2.0
         version: 14.2.35(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -32,6 +35,9 @@ importers:
       react-dom:
         specifier: ^18.3.0
         version: 18.3.1(react@18.3.1)
+      tar-fs:
+        specifier: ^3.0.6
+        version: 3.1.2
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
