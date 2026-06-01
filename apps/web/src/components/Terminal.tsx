@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 export interface LogLine {
   message: string;
   status: 'progress' | 'done' | 'error';
@@ -11,6 +13,13 @@ interface Props {
 }
 
 export default function Terminal({ lines, running }: Props) {
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines.length, running]);
+
   if (lines.length === 0 && !running) return null;
 
   return (
@@ -18,7 +27,7 @@ export default function Terminal({ lines, running }: Props) {
       <div className="terminal__bar">
         <span className="terminal__name">openkova</span>
       </div>
-      <div className="terminal__body">
+      <div className="terminal__body" ref={bodyRef}>
         {lines.map((line, i) => (
           <div key={i} className={`terminal__line terminal__line--${line.status}`}>
             <span className="terminal__prompt">&gt;</span>
