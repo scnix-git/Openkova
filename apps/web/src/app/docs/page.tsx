@@ -37,6 +37,12 @@ export default function DocsPage() {
           <code>sessionId</code> in subsequent requests to keep results in the same gallery. If you
           omit it, a new session is created automatically.
         </p>
+        <p>
+          <strong>Storage retention: 24 hours.</strong> Screenshots are automatically deleted 24
+          hours after the session was last written to. The server runs a cleanup pass every hour.
+          Download your images before then — use the <strong>Download All</strong> button or the{' '}
+          <code>GET /api/session/:sessionId/download</code> endpoint to grab everything as a ZIP.
+        </p>
 
         <h2>Streaming responses (SSE)</h2>
         <p>

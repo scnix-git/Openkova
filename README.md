@@ -109,6 +109,10 @@ Dockerfile      Multi-stage build for Railway/Docker
 railway.toml    Railway deployment config
 ```
 
+## Storage retention
+
+Screenshots are automatically deleted **24 hours** after the session directory was last written to. A cleanup pass runs every hour on server startup via `instrumentation.ts`. Download your images before then using the **Download All** button or the `/api/session/:sid/download` ZIP endpoint.
+
 ## Environment variables
 
 | Variable | Default | Description |
