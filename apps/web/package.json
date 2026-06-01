@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@openkova/core": "workspace:*",
+    "fflate": "^0.8.0",
     "next": "^16.2.6",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"

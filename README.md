@@ -59,11 +59,13 @@ This builds the multi-stage image (Node 24 + system Chromium on Debian) and moun
 All convert endpoints stream [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) rather than a single JSON response. Progress messages arrive as `progress` events; the final result arrives as a `done` event.
 
 ```
-POST /api/convert/snippet   { html, sessionId? }
-POST /api/convert/file      multipart/form-data  files[], sessionId?
-POST /api/convert/url       { url, depth?, sessionId? }
-GET  /api/image/:sid/:id    → PNG binary
-GET  /api/session/:sid      → { images: string[] }
+POST /api/convert/snippet        { html, sessionId? }
+POST /api/convert/file           multipart/form-data  files[], sessionId?
+POST /api/convert/url            { url, depth?, sessionId? }  — crawl mode
+POST /api/convert/url            { urls[], sessionId, offset, total }  — paginate mode
+GET  /api/image/:sid/:id         → PNG binary
+GET  /api/session/:sid/download  → ZIP of all session screenshots
+GET  /api/session/:sid           → { images: string[] }
 ```
 
 Full documentation is available at `/docs` in the running app.

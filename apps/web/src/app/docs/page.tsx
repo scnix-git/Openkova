@@ -158,25 +158,34 @@ sessionId string   // optional form field`}</code>
 
         <h2>POST /api/convert/url</h2>
         <p>
-          Crawls a public URL and screenshots each discovered page. The crawler fetches the root
-          page, extracts same-origin <code>&lt;a href&gt;</code> links (ignoring fragments,
-          external domains, and duplicates), and queues up to 10 URLs total. Pages are captured
-          sequentially so progress is visible in real time.
+          Crawls a public URL and screenshots discovered pages 10 at a time. The crawler fetches
+          the root page, extracts same-origin <code>&lt;a href&gt;</code> links (ignoring
+          fragments, external domains, and duplicates), then screenshots the first 10. The{' '}
+          <code>remaining</code> field in the done event contains any URLs not yet captured — pass
+          them back via the <code>urls</code> field to fetch the next batch without re-crawling.
         </p>
         <p>
-          <strong>Request</strong> — <code>Content-Type: application/json</code>
+          <strong>Request (crawl mode)</strong> — <code>Content-Type: application/json</code>
         </p>
         <pre>
           <code>{`{
-  "url":       "https://example.com",  // required — must be a valid absolute URL
+  "url":       "https://example.com",  // required — valid absolute URL
   "depth":     1,                      // optional — 1 (default) or 2
   "sessionId": "uuid"                  // optional
 }`}</code>
         </pre>
         <p>
-          <code>depth: 1</code> screenshots the root page plus all same-origin links found on it
-          (up to 10 total). <code>depth: 2</code> additionally follows links found on those pages.
+          <strong>Request (paginate mode)</strong> — pass pre-known URLs to screenshot without
+          re-crawling:
         </p>
+        <pre>
+          <code>{`{
+  "urls":      ["https://example.com/page-11", ...],  // required
+  "sessionId": "uuid",   // required — use the session from the first request
+  "offset":    10,       // how many pages were already captured
+  "total":     25        // total discovered in the original crawl
+}`}</code>
+        </pre>
         <p>
           <strong>SSE progress messages:</strong> Fetching <em>url</em> → Found N pages to capture
           → Launching virtual browser → Capturing page X/N: <em>url</em> (repeated per page)
@@ -187,34 +196,40 @@ sessionId string   // optional form field`}</code>
         <pre>
           <code>{`{
   "sessionId": "uuid",
-  "results": [
-    { "imageId": "uuid", "url": "https://example.com/" },
-    { "imageId": "uuid", "url": "https://example.com/about" },
-    ...
-  ]
+  "results":   [{ "imageId": "uuid", "url": "https://example.com/" }, ...],
+  "remaining": ["https://example.com/page-11", ...],  // empty array when all captured
+  "total":     25
 }`}</code>
         </pre>
 
         <h2>GET /api/image/:sessionId/:id</h2>
         <p>
-          Returns a PNG screenshot as a binary response with{' '}
-          <code>Content-Type: image/png</code>. Use directly as an <code>&lt;img src&gt;</code> or
-          download link. Responses are cached for 1 hour (<code>Cache-Control: public, max-age=3600, immutable</code>).
+          Returns a single PNG screenshot with <code>Content-Type: image/png</code>. Use directly
+          as an <code>&lt;img src&gt;</code> or download link. Responses are cached for 1 hour (
+          <code>Cache-Control: public, max-age=3600, immutable</code>).
         </p>
         <p>
           Returns <code>404</code> if the image does not exist.
         </p>
 
+        <h2>GET /api/session/:sessionId/download</h2>
+        <p>
+          Downloads all screenshots in a session as a single <code>.zip</code> file (
+          <code>Content-Type: application/zip</code>). Each image is stored uncompressed inside
+          the archive (compression level 0) since PNGs are already compressed. Returns{' '}
+          <code>404</code> if the session has no images.
+        </p>
+        <p>
+          This is the endpoint behind the <strong>Download All</strong> button in the UI — it is a
+          plain link, no JavaScript required.
+        </p>
+
         <h2>GET /api/session/:sessionId</h2>
         <p>Returns all image IDs associated with a session.</p>
         <pre>
-          <code>{`{
-  "images": ["uuid1", "uuid2", ...]
-}`}</code>
+          <code>{`{ "images": ["uuid1", "uuid2", ...] }`}</code>
         </pre>
-        <p>
-          Returns an empty array if the session has no images or does not exist.
-        </p>
+        <p>Returns an empty array if the session has no images or does not exist.</p>
       </div>
     </main>
   );
