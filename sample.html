@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Openkova Sample</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f0f0f;
+      color: #e8e8e8;
+      padding: 48px;
+      min-height: 800px;
+    }
+
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #2e2e2e;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 600px;
+      margin-bottom: 24px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #7c6af7;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 99px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 8px;
+    }
+
+    h1 span { color: #7c6af7; }
+
+    p {
+      color: #999;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      max-width: 600px;
+      margin-bottom: 24px;
+    }
+
+    .stat {
+      background: #1a1a1a;
+      border: 1px solid #2e2e2e;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat__value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #7c6af7;
+    }
+
+    .stat__label {
+      font-size: 0.8rem;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      background: #222;
+      border: 1px solid #2e2e2e;
+      border-radius: 99px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <span class="badge">Sample</span>
+    <h1>Hello, <span>Openkova</span></h1>
+    <p>
+      This is a sample HTML file for testing the file upload feature.
+      Upload it via the Files tab to see it rendered as a screenshot.
+    </p>
+    <div class="pill-row">
+      <span class="pill">HTML → PNG</span>
+      <span class="pill">1280 × 800</span>
+      <span class="pill">Headless Chromium</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat__value">3</div>
+      <div class="stat__label">Input modes</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value">10</div>
+      <div class="stat__label">Pages per batch</div>
+    </div>
+    <div class="stat">
+      <div class="stat__value">PNG</div>
+      <div class="stat__label">Output format</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p style="margin: 0; color: #666; font-size: 0.85rem;">
+      Tip: you can upload multiple <code style="background:#222;padding:2px 6px;border-radius:4px;color:#e8e8e8;">.html</code> files at once — each gets its own screenshot.
+    </p>
+  </div>
+
+</body>
+</html>

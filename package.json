@@ -8,9 +8,15 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck"
   },
+  "packageManager": "pnpm@10.33.0",
   "engines": {
-    "node": ">=22",
+    "node": "24.x",
     "pnpm": ">=10"
+  },
+  "pnpm": {
+    "overrides": {
+      "baseline-browser-mapping": "<=2.10.32"
+    }
   },
   "devDependencies": {
     "prettier": "^3.0.0",

@@ -1,11 +1,11 @@
-import puppeteer, { type Browser } from 'puppeteer';
+import puppeteer, { type Browser, type LaunchOptions } from 'puppeteer-core';
 import { v4 as uuidv4 } from 'uuid';
 import { LocalStorageAdapter, type StorageAdapter } from './storage.js';
 
 const VIEWPORT = { width: 1280, height: 800 };
 const TIMEOUT = 30_000;
 
-const LAUNCH_ARGS = [
+const ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
   '--disable-dev-shm-usage',
@@ -13,6 +13,43 @@ const LAUNCH_ARGS = [
   '--no-first-run',
   '--no-zygote',
 ];
+
+let launchOptionsCache: LaunchOptions | null = null;
+
+async function getLaunchOptions(): Promise<LaunchOptions> {
+  if (launchOptionsCache) return launchOptionsCache;
+
+  // Explicit path via env var (Docker / CI / Railway sets CHROMIUM_PATH)
+  if (process.env.CHROMIUM_PATH) {
+    launchOptionsCache = { executablePath: process.env.CHROMIUM_PATH, args: ARGS, headless: true };
+    return launchOptionsCache;
+  }
+
+  // Local dev: puppeteer devDependency bundles its own Chrome
+  try {
+    const { executablePath } = await import('puppeteer');
+    launchOptionsCache = { executablePath: await executablePath(), args: ARGS, headless: true };
+    return launchOptionsCache;
+  } catch {
+    // not installed, fall through
+  }
+
+  // Fallback: common system Chrome paths
+  const { existsSync } = await import('fs');
+  const systemPaths =
+    process.platform === 'darwin'
+      ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome']
+      : process.platform === 'win32'
+        ? ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe']
+        : [
+            '/usr/bin/google-chrome-stable',
+            '/usr/bin/google-chrome',
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium',
+          ];
+  launchOptionsCache = { executablePath: systemPaths.find((p) => existsSync(p)), args: ARGS, headless: true };
+  return launchOptionsCache;
+}
 
 let browserPromise: Promise<Browser> | null = null;
 
@@ -22,7 +59,8 @@ async function getBrowser(): Promise<Browser> {
     if (b.connected) return b;
     browserPromise = null;
   }
-  browserPromise = puppeteer.launch({ headless: true, args: LAUNCH_ARGS });
+  const options = await getLaunchOptions();
+  browserPromise = puppeteer.launch(options);
   const b = await browserPromise;
   b.on('disconnected', () => {
     browserPromise = null;
@@ -57,13 +95,19 @@ function wrapHtml(html: string): string {
 }
 
 export function createRenderer(storage: StorageAdapter) {
-  async function screenshotSnippet(html: string, sessionId: string): Promise<string> {
+  async function screenshotSnippet(
+    html: string,
+    sessionId: string,
+    onProgress?: (msg: string) => void,
+  ): Promise<string> {
     const imageId = uuidv4();
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
       await page.setViewport(VIEWPORT);
-      await page.setContent(wrapHtml(html), { waitUntil: 'networkidle0', timeout: TIMEOUT });
+      onProgress?.('Rendering HTML');
+      await page.setContent(wrapHtml(html), { waitUntil: 'load', timeout: TIMEOUT });
+      onProgress?.('Taking snapshot');
       const buffer = await page.screenshot({ type: 'png', fullPage: false });
       await storage.save(sessionId, imageId, Buffer.from(buffer));
     } finally {
@@ -72,13 +116,19 @@ export function createRenderer(storage: StorageAdapter) {
     return imageId;
   }
 
-  async function screenshotUrl(url: string, sessionId: string): Promise<string> {
+  async function screenshotUrl(
+    url: string,
+    sessionId: string,
+    onProgress?: (msg: string) => void,
+  ): Promise<string> {
     const imageId = uuidv4();
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
       await page.setViewport(VIEWPORT);
-      await page.goto(url, { waitUntil: 'networkidle0', timeout: TIMEOUT });
+      onProgress?.(`Loading ${url}`);
+      await page.goto(url, { waitUntil: 'load', timeout: TIMEOUT });
+      onProgress?.('Taking snapshot');
       const buffer = await page.screenshot({ type: 'png', fullPage: false });
       await storage.save(sessionId, imageId, Buffer.from(buffer));
     } finally {

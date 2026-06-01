@@ -1,7 +1,11 @@
 const LINK_REGEX = /<a\s[^>]*href=["']([^"']+)["']/gi;
 const FETCH_TIMEOUT = 10_000;
 
-export async function crawlUrl(rootUrl: string, depth = 1): Promise<string[]> {
+export async function crawlUrl(
+  rootUrl: string,
+  depth = 1,
+  onProgress?: (msg: string) => void,
+): Promise<string[]> {
   const origin = new URL(rootUrl).origin;
   const seen = new Set<string>();
   seen.add(normalizeUrl(rootUrl));
@@ -10,6 +14,7 @@ export async function crawlUrl(rootUrl: string, depth = 1): Promise<string[]> {
 
   if (depth < 1) return results;
 
+  onProgress?.(`Fetching ${rootUrl}`);
   let html: string;
   try {
     const res = await fetch(rootUrl, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
@@ -20,6 +25,9 @@ export async function crawlUrl(rootUrl: string, depth = 1): Promise<string[]> {
 
   const links = extractSameOriginLinks(html, rootUrl, origin, seen);
   results.push(...links);
+
+  const total = results.length;
+  onProgress?.(`Found ${total} page${total !== 1 ? 's' : ''} to capture`);
 
   return results;
 }
