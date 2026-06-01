@@ -1,6 +1,6 @@
 import { type NextRequest } from 'next/server';
 import { createSession, screenshotSnippet } from '@openkova/core';
-import { sseResponse } from '@/lib/sse';
+import { sseResponse, parseViewport } from '@/lib/sse';
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -10,9 +10,10 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { html, sessionId: providedSessionId } = body as {
+  const { html, sessionId: providedSessionId, viewport: rawViewport } = body as {
     html?: unknown;
     sessionId?: unknown;
+    viewport?: unknown;
   };
 
   if (typeof html !== 'string' || html.trim().length === 0) {
@@ -24,12 +25,15 @@ export async function POST(req: NextRequest) {
       ? providedSessionId
       : createSession();
 
+  const viewport = parseViewport(rawViewport);
+
   return sseResponse(async (send) => {
     try {
       send({ type: 'progress', message: 'Launching virtual browser' });
-      const imageId = await screenshotSnippet(html, sessionId, (msg) =>
-        send({ type: 'progress', message: msg }),
-      );
+      const imageId = await screenshotSnippet(html, sessionId, {
+        viewport,
+        onProgress: (msg) => send({ type: 'progress', message: msg }),
+      });
       send({
         type: 'done',
         message: 'Done — screenshot saved',
