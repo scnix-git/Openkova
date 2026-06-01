@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import type { GalleryImage } from './ConverterTabs';
 
 interface Props {
@@ -9,35 +8,7 @@ interface Props {
 }
 
 export default function Gallery({ sessionId, images }: Props) {
-  const [downloading, setDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-
   if (images.length === 0) return null;
-
-  async function downloadAll() {
-    setDownloading(true);
-    setDownloadProgress(0);
-    try {
-      for (let i = 0; i < images.length; i++) {
-        const img = images[i]!;
-        const src = `/api/image/${sessionId}/${img.imageId}`;
-        const res = await fetch(src);
-        const blob = await res.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = objectUrl;
-        a.download = `${img.imageId}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(objectUrl);
-        setDownloadProgress(i + 1);
-        if (i < images.length - 1) await new Promise((r) => setTimeout(r, 150));
-      }
-    } finally {
-      setDownloading(false);
-    }
-  }
 
   return (
     <div className="gallery">
@@ -48,13 +19,13 @@ export default function Gallery({ sessionId, images }: Props) {
             {images.length} image{images.length !== 1 ? 's' : ''}
           </span>
           {images.length > 1 && (
-            <button
+            <a
+              href={`/api/session/${sessionId}/download`}
+              download="openkova-screenshots.zip"
               className="btn btn--ghost gallery__download-all"
-              onClick={downloadAll}
-              disabled={downloading}
             >
-              {downloading ? `Downloading ${downloadProgress}/${images.length}…` : 'Download All'}
-            </button>
+              Download All
+            </a>
           )}
         </div>
       </div>
