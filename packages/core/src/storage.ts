@@ -52,4 +52,23 @@ export class LocalStorageAdapter implements StorageAdapter {
   async delete(sessionId: string, imageId: string): Promise<void> {
     await fs.unlink(this.filePath(sessionId, imageId));
   }
+
+  async cleanup(maxAgeMs: number): Promise<number> {
+    let deleted = 0;
+    try {
+      const sessions = await fs.readdir(this.basePath);
+      const cutoff = Date.now() - maxAgeMs;
+      for (const sessionId of sessions) {
+        const dir = this.sessionDir(sessionId);
+        try {
+          const stat = await fs.stat(dir);
+          if (stat.mtimeMs < cutoff) {
+            await fs.rm(dir, { recursive: true });
+            deleted++;
+          }
+        } catch {}
+      }
+    } catch {}
+    return deleted;
+  }
 }
