@@ -95,13 +95,19 @@ function wrapHtml(html: string): string {
 }
 
 export function createRenderer(storage: StorageAdapter) {
-  async function screenshotSnippet(html: string, sessionId: string): Promise<string> {
+  async function screenshotSnippet(
+    html: string,
+    sessionId: string,
+    onProgress?: (msg: string) => void,
+  ): Promise<string> {
     const imageId = uuidv4();
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
       await page.setViewport(VIEWPORT);
+      onProgress?.('Rendering HTML');
       await page.setContent(wrapHtml(html), { waitUntil: 'load', timeout: TIMEOUT });
+      onProgress?.('Taking snapshot');
       const buffer = await page.screenshot({ type: 'png', fullPage: false });
       await storage.save(sessionId, imageId, Buffer.from(buffer));
     } finally {
@@ -110,13 +116,19 @@ export function createRenderer(storage: StorageAdapter) {
     return imageId;
   }
 
-  async function screenshotUrl(url: string, sessionId: string): Promise<string> {
+  async function screenshotUrl(
+    url: string,
+    sessionId: string,
+    onProgress?: (msg: string) => void,
+  ): Promise<string> {
     const imageId = uuidv4();
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
       await page.setViewport(VIEWPORT);
+      onProgress?.(`Loading ${url}`);
       await page.goto(url, { waitUntil: 'load', timeout: TIMEOUT });
+      onProgress?.('Taking snapshot');
       const buffer = await page.screenshot({ type: 'png', fullPage: false });
       await storage.save(sessionId, imageId, Buffer.from(buffer));
     } finally {

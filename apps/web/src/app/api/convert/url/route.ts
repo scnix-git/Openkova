@@ -1,5 +1,6 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { type NextRequest } from 'next/server';
 import { createSession, screenshotUrl, crawlUrl } from '@openkova/core';
+import { sseResponse } from '@/lib/sse';
 
 const MAX_URLS = 10;
 
@@ -8,7 +9,7 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
   const { url, sessionId: providedSessionId, depth } = body as {
@@ -18,42 +19,46 @@ export async function POST(req: NextRequest) {
   };
 
   if (typeof url !== 'string' || url.trim().length === 0) {
-    return NextResponse.json({ error: 'url must be a non-empty string' }, { status: 400 });
+    return Response.json({ error: 'url must be a non-empty string' }, { status: 400 });
   }
 
   try {
     new URL(url);
   } catch {
-    return NextResponse.json({ error: 'url is not a valid URL' }, { status: 400 });
+    return Response.json({ error: 'url is not a valid URL' }, { status: 400 });
   }
 
   const crawlDepth = typeof depth === 'number' && depth >= 1 && depth <= 2 ? Math.floor(depth) : 1;
-
   const sessionId =
     typeof providedSessionId === 'string' && providedSessionId.length > 0
       ? providedSessionId
       : createSession();
 
-  try {
-    const urls = (await crawlUrl(url, crawlDepth)).slice(0, MAX_URLS);
+  return sseResponse(async (send) => {
+    try {
+      const urls = (
+        await crawlUrl(url, crawlDepth, (msg) => send({ type: 'progress', message: msg }))
+      ).slice(0, MAX_URLS);
 
-    const results = await Promise.all(
-      urls.map(async (u) => {
+      const total = urls.length;
+      send({ type: 'progress', message: 'Launching virtual browser' });
+
+      const results: { imageId: string; url: string }[] = [];
+      for (let i = 0; i < urls.length; i++) {
+        const u = urls[i]!;
+        send({ type: 'progress', message: `Capturing page ${i + 1}/${total}: ${u}` });
         const imageId = await screenshotUrl(u, sessionId);
-        return { imageId, url: u };
-      }),
-    );
+        results.push({ imageId, url: u });
+      }
 
-    const response = NextResponse.json({ sessionId, results });
-    response.cookies.set('openkova_session', sessionId, {
-      httpOnly: true,
-      path: '/',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
-    });
-    return response;
-  } catch (err) {
-    console.error('[convert/url]', err);
-    return NextResponse.json({ error: 'Conversion failed' }, { status: 500 });
-  }
+      send({
+        type: 'done',
+        message: `Done — ${total} screenshot${total !== 1 ? 's' : ''} saved`,
+        data: { sessionId, results },
+      });
+    } catch (err) {
+      console.error('[convert/url]', err);
+      send({ type: 'error', message: 'Conversion failed' });
+    }
+  }, sessionId);
 }
