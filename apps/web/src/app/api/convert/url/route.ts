@@ -2,8 +2,6 @@ import { type NextRequest } from 'next/server';
 import { createSession, screenshotUrl, crawlUrl } from '@openkova/core';
 import { sseResponse } from '@/lib/sse';
 
-const MAX_URLS = 10;
-
 export async function POST(req: NextRequest) {
   let body: unknown;
   try {
@@ -36,9 +34,9 @@ export async function POST(req: NextRequest) {
 
   return sseResponse(async (send) => {
     try {
-      const urls = (
-        await crawlUrl(url, crawlDepth, (msg) => send({ type: 'progress', message: msg }))
-      ).slice(0, MAX_URLS);
+      const urls = await crawlUrl(url, crawlDepth, (msg) =>
+        send({ type: 'progress', message: msg }),
+      );
 
       const total = urls.length;
       send({ type: 'progress', message: 'Launching virtual browser' });

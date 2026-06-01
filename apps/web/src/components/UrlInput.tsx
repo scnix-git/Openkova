@@ -105,7 +105,7 @@ export default function UrlInput({ sessionId, onConversionComplete }: Props) {
           </div>
         </div>
         <p className="converter-input__label" style={{ marginTop: 8 }}>
-          Screenshots the URL and up to 10 same-origin linked pages.
+          Screenshots the URL and all same-origin linked pages.
         </p>
       </div>
 
