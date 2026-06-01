@@ -1,6 +1,6 @@
 import { type NextRequest } from 'next/server';
 import { createSession, screenshotSnippet } from '@openkova/core';
-import { sseResponse } from '@/lib/sse';
+import { sseResponse, parseViewport } from '@/lib/sse';
 
 export async function POST(req: NextRequest) {
   let formData: FormData;
@@ -23,6 +23,9 @@ export async function POST(req: NextRequest) {
       ? providedSessionId
       : createSession();
 
+  const rawViewport = formData.get('viewport');
+  const viewport = parseViewport(rawViewport ? JSON.parse(rawViewport as string) : null);
+
   return sseResponse(async (send) => {
     try {
       send({ type: 'progress', message: 'Launching virtual browser' });
@@ -32,7 +35,7 @@ export async function POST(req: NextRequest) {
         send({ type: 'progress', message: `Rendering ${file.name}` });
         const buffer = Buffer.from(await file.arrayBuffer());
         const html = buffer.toString('utf-8');
-        const imageId = await screenshotSnippet(html, sessionId);
+        const imageId = await screenshotSnippet(html, sessionId, { viewport });
         results.push({ imageId, filename: file.name, url: `/api/image/${sessionId}/${imageId}` });
       }
 
