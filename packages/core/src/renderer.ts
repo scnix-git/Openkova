@@ -116,7 +116,7 @@ export function createRenderer(storage: StorageAdapter) {
     const page = await browser.newPage();
     try {
       await page.setViewport(VIEWPORT);
-      await page.goto(url, { waitUntil: 'networkidle0', timeout: TIMEOUT });
+      await page.goto(url, { waitUntil: 'load', timeout: TIMEOUT });
       const buffer = await page.screenshot({ type: 'png', fullPage: false });
       await storage.save(sessionId, imageId, Buffer.from(buffer));
     } finally {
