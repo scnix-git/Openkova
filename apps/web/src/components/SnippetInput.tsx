@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import type { GalleryImage } from './ConverterTabs';
+import Terminal, { type LogLine } from './Terminal';
+import { parseSSEStream } from '@/lib/sse';
 
 interface Props {
   sessionId: string | null;
@@ -14,7 +16,11 @@ const PLACEHOLDER = `<h1 style="font-family: sans-serif; color: #7c6af7;">Hello,
 export default function SnippetInput({ sessionId, onConversionComplete }: Props) {
   const [html, setHtml] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [lines, setLines] = useState<LogLine[]>([]);
+
+  function addLine(line: LogLine) {
+    setLines((prev) => [...prev, line]);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,7 +28,7 @@ export default function SnippetInput({ sessionId, onConversionComplete }: Props)
     if (!trimmed) return;
 
     setLoading(true);
-    setError(null);
+    setLines([]);
 
     try {
       const res = await fetch('/api/convert/snippet', {
@@ -31,19 +37,36 @@ export default function SnippetInput({ sessionId, onConversionComplete }: Props)
         body: JSON.stringify({ html: trimmed, sessionId }),
       });
 
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         let message = `Server error ${res.status}`;
         try {
           const data = (await res.json()) as { error?: string };
           if (data.error) message = data.error;
         } catch {}
-        throw new Error(message);
+        addLine({ message, status: 'error' });
+        return;
       }
 
-      const data = (await res.json()) as { sessionId: string; imageId: string };
-      onConversionComplete(data.sessionId, [{ imageId: data.imageId, label: 'snippet' }]);
+      let gotDone = false;
+      for await (const event of parseSSEStream(res.body)) {
+        if (event.type === 'progress') {
+          addLine({ message: event.message, status: 'progress' });
+        } else if (event.type === 'done') {
+          gotDone = true;
+          addLine({ message: event.message, status: 'done' });
+          const data = event.data as { sessionId: string; imageId: string };
+          onConversionComplete(data.sessionId, [{ imageId: data.imageId, label: 'snippet' }]);
+        } else if (event.type === 'error') {
+          addLine({ message: event.message, status: 'error' });
+          return;
+        }
+      }
+      if (!gotDone) addLine({ message: 'Conversion failed unexpectedly', status: 'error' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Conversion failed');
+      addLine({
+        message: err instanceof Error ? err.message : 'Conversion failed',
+        status: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -65,7 +88,7 @@ export default function SnippetInput({ sessionId, onConversionComplete }: Props)
         />
       </div>
 
-      {error && <div className="converter-input__error">{error}</div>}
+      <Terminal lines={lines} running={loading} />
 
       <div className="converter-input__actions">
         <button type="submit" className="btn btn--primary" disabled={loading || !html.trim()}>

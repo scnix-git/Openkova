@@ -2,6 +2,8 @@
 
 import { useRef, useState } from 'react';
 import type { GalleryImage } from './ConverterTabs';
+import Terminal, { type LogLine } from './Terminal';
+import { parseSSEStream } from '@/lib/sse';
 
 interface Props {
   sessionId: string | null;
@@ -11,12 +13,15 @@ interface Props {
 export default function FileInput({ sessionId, onConversionComplete }: Props) {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [lines, setLines] = useState<LogLine[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function addLine(line: LogLine) {
+    setLines((prev) => [...prev, line]);
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     setFiles(Array.from(e.target.files ?? []));
-    setError(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -24,7 +29,7 @@ export default function FileInput({ sessionId, onConversionComplete }: Props) {
     if (files.length === 0) return;
 
     setLoading(true);
-    setError(null);
+    setLines([]);
 
     try {
       const formData = new FormData();
@@ -33,29 +38,45 @@ export default function FileInput({ sessionId, onConversionComplete }: Props) {
 
       const res = await fetch('/api/convert/file', { method: 'POST', body: formData });
 
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         let message = `Server error ${res.status}`;
         try {
           const data = (await res.json()) as { error?: string };
           if (data.error) message = data.error;
         } catch {}
-        throw new Error(message);
+        addLine({ message, status: 'error' });
+        return;
       }
 
-      const data = (await res.json()) as {
-        sessionId: string;
-        results: { imageId: string; filename: string }[];
-      };
-
-      const images: GalleryImage[] = data.results.map((r) => ({
-        imageId: r.imageId,
-        label: r.filename,
-      }));
-      onConversionComplete(data.sessionId, images);
-      setFiles([]);
-      if (inputRef.current) inputRef.current.value = '';
+      let gotDone = false;
+      for await (const event of parseSSEStream(res.body)) {
+        if (event.type === 'progress') {
+          addLine({ message: event.message, status: 'progress' });
+        } else if (event.type === 'done') {
+          gotDone = true;
+          addLine({ message: event.message, status: 'done' });
+          const data = event.data as {
+            sessionId: string;
+            results: { imageId: string; filename: string }[];
+          };
+          const images: GalleryImage[] = data.results.map((r) => ({
+            imageId: r.imageId,
+            label: r.filename,
+          }));
+          onConversionComplete(data.sessionId, images);
+          setFiles([]);
+          if (inputRef.current) inputRef.current.value = '';
+        } else if (event.type === 'error') {
+          addLine({ message: event.message, status: 'error' });
+          return;
+        }
+      }
+      if (!gotDone) addLine({ message: 'Conversion failed unexpectedly', status: 'error' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Conversion failed');
+      addLine({
+        message: err instanceof Error ? err.message : 'Conversion failed',
+        status: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -90,7 +111,7 @@ export default function FileInput({ sessionId, onConversionComplete }: Props) {
         )}
       </div>
 
-      {error && <div className="converter-input__error">{error}</div>}
+      <Terminal lines={lines} running={loading} />
 
       <div className="converter-input__actions">
         <button type="submit" className="btn btn--primary" disabled={loading || files.length === 0}>
