@@ -14,60 +14,207 @@ export default function DocsPage() {
         <ul>
           <li>
             <strong>HTML Snippet</strong> — Paste raw HTML into the textarea. The server wraps it
-            in a full document and screenshots at 1280×800.
+            in a full document, renders it in a headless Chromium browser at 1280×800, and returns
+            a PNG screenshot.
           </li>
           <li>
-            <strong>Files</strong> — Upload one or more <code>.html</code> files. Each is processed
-            and returned as a separate screenshot.
+            <strong>Files</strong> — Upload one or more <code>.html</code> or <code>.htm</code>{' '}
+            files. Each file is rendered individually and returned as a separate screenshot,
+            processed in order.
           </li>
           <li>
-            <strong>URL / Crawl</strong> — Provide a URL. Openkova screenshots the root page and
-            up to 10 same-origin linked pages (depth 1 or 2).
+            <strong>URL / Crawl</strong> — Provide any public URL. Openkova fetches the page,
+            extracts all same-origin links, and screenshots up to 10 pages (depth 1 follows direct
+            links; depth 2 follows their links once more). Pages are captured sequentially.
           </li>
         </ul>
 
         <h2>Sessions</h2>
         <p>
-          Each browser session is identified by a UUID stored in the{' '}
-          <code>openkova_session</code> cookie. All screenshots produced in a session are grouped
-          together and accessible for the duration of your visit.
+          Every conversion is associated with a session — a UUID that groups your screenshots
+          together. The session ID is returned in every API response and stored in an{' '}
+          <code>openkova_session</code> HTTP-only cookie (7-day expiry). Pass it back as{' '}
+          <code>sessionId</code> in subsequent requests to keep results in the same gallery. If you
+          omit it, a new session is created automatically.
         </p>
 
-        <h2>REST API</h2>
-        <p>All endpoints accept and return JSON unless noted.</p>
-
-        <h2>POST /api/convert/snippet</h2>
+        <h2>Streaming responses (SSE)</h2>
+        <p>
+          All three convert endpoints respond with a{' '}
+          <strong>Server-Sent Events (SSE) stream</strong> rather than a single JSON blob. This
+          lets the UI (and your own code) display live progress as the browser launches, pages load,
+          and snapshots are taken.
+        </p>
+        <p>Each line in the stream is a JSON event in one of three shapes:</p>
         <pre>
-          <code>{`{ "html": "<h1>Hello</h1>", "sessionId": "optional-uuid" }`}</code>
+          <code>{`// A step in progress
+{ "type": "progress", "message": "Launching virtual browser" }
+
+// Final success — stream closes after this
+{ "type": "done", "message": "Done — 3 screenshots saved", "data": { ... } }
+
+// Unrecoverable error — stream closes after this
+{ "type": "error", "message": "Conversion failed" }`}</code>
         </pre>
         <p>
-          Returns <code>{`{ sessionId, imageId, url }`}</code>.
+          The <code>data</code> field on <code>done</code> events contains the same payload that
+          was previously returned as JSON (see per-endpoint details below).
         </p>
+        <p>
+          The <code>Set-Cookie</code> header for the session is set on the streaming response
+          itself, so cookies work normally even though there is no JSON body.
+        </p>
+
+        <h2>Consuming the stream (JavaScript)</h2>
+        <pre>
+          <code>{`const res = await fetch('/api/convert/snippet', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ html: '<h1>Hello</h1>' }),
+});
+
+const reader = res.body.getReader();
+const decoder = new TextDecoder();
+let buffer = '';
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  buffer += decoder.decode(value, { stream: true });
+
+  // SSE events are separated by double newline
+  const parts = buffer.split('\\n\\n');
+  buffer = parts.pop() ?? '';
+
+  for (const part of parts) {
+    const line = part.split('\\n').find(l => l.startsWith('data: '));
+    if (!line) continue;
+    const event = JSON.parse(line.slice(6));
+
+    if (event.type === 'progress') console.log(event.message);
+    if (event.type === 'done')     console.log('Result:', event.data);
+    if (event.type === 'error')    console.error(event.message);
+  }
+}`}</code>
+        </pre>
+
+        <h2>POST /api/convert/snippet</h2>
+        <p>
+          Renders a raw HTML string and returns a single screenshot. The HTML is wrapped in a
+          minimal full document with a reset stylesheet before rendering.
+        </p>
+        <p>
+          <strong>Request</strong> — <code>Content-Type: application/json</code>
+        </p>
+        <pre>
+          <code>{`{
+  "html":      "<h1>Hello</h1>",   // required — raw HTML string
+  "sessionId": "uuid"              // optional — omit to create a new session
+}`}</code>
+        </pre>
+        <p>
+          <strong>SSE progress messages:</strong> Launching virtual browser → Rendering HTML →
+          Taking snapshot
+        </p>
+        <p>
+          <strong>Done event data:</strong>
+        </p>
+        <pre>
+          <code>{`{
+  "sessionId": "uuid",
+  "imageId":   "uuid",
+  "url":       "/api/image/{sessionId}/{imageId}"
+}`}</code>
+        </pre>
 
         <h2>POST /api/convert/file</h2>
         <p>
-          Multipart form data. Field <code>files</code> (multiple). Optional field{' '}
-          <code>sessionId</code>.
+          Accepts one or more HTML files as multipart form data and returns one screenshot per
+          file. Files are rendered sequentially in the order they are submitted.
         </p>
         <p>
-          Returns <code>{`{ sessionId, results: [{ imageId, filename, url }] }`}</code>.
+          <strong>Request</strong> — <code>Content-Type: multipart/form-data</code>
         </p>
-
-        <h2>POST /api/convert/url</h2>
         <pre>
-          <code>{`{ "url": "https://example.com", "depth": 1, "sessionId": "optional-uuid" }`}</code>
+          <code>{`files     File[]   // required — one or more .html/.htm files
+sessionId string   // optional form field`}</code>
         </pre>
         <p>
-          Returns <code>{`{ sessionId, results: [{ imageId, url }] }`}</code>.
+          <strong>SSE progress messages:</strong> Launching virtual browser → Rendering{' '}
+          <em>filename.html</em> (repeated per file)
+        </p>
+        <p>
+          <strong>Done event data:</strong>
+        </p>
+        <pre>
+          <code>{`{
+  "sessionId": "uuid",
+  "results": [
+    { "imageId": "uuid", "filename": "index.html", "url": "/api/image/..." },
+    ...
+  ]
+}`}</code>
+        </pre>
+
+        <h2>POST /api/convert/url</h2>
+        <p>
+          Crawls a public URL and screenshots each discovered page. The crawler fetches the root
+          page, extracts same-origin <code>&lt;a href&gt;</code> links (ignoring fragments,
+          external domains, and duplicates), and queues up to 10 URLs total. Pages are captured
+          sequentially so progress is visible in real time.
+        </p>
+        <p>
+          <strong>Request</strong> — <code>Content-Type: application/json</code>
+        </p>
+        <pre>
+          <code>{`{
+  "url":       "https://example.com",  // required — must be a valid absolute URL
+  "depth":     1,                      // optional — 1 (default) or 2
+  "sessionId": "uuid"                  // optional
+}`}</code>
+        </pre>
+        <p>
+          <code>depth: 1</code> screenshots the root page plus all same-origin links found on it
+          (up to 10 total). <code>depth: 2</code> additionally follows links found on those pages.
+        </p>
+        <p>
+          <strong>SSE progress messages:</strong> Fetching <em>url</em> → Found N pages to capture
+          → Launching virtual browser → Capturing page X/N: <em>url</em> (repeated per page)
+        </p>
+        <p>
+          <strong>Done event data:</strong>
+        </p>
+        <pre>
+          <code>{`{
+  "sessionId": "uuid",
+  "results": [
+    { "imageId": "uuid", "url": "https://example.com/" },
+    { "imageId": "uuid", "url": "https://example.com/about" },
+    ...
+  ]
+}`}</code>
+        </pre>
+
+        <h2>GET /api/image/:sessionId/:id</h2>
+        <p>
+          Returns a PNG screenshot as a binary response with{' '}
+          <code>Content-Type: image/png</code>. Use directly as an <code>&lt;img src&gt;</code> or
+          download link. Responses are cached for 1 hour (<code>Cache-Control: public, max-age=3600, immutable</code>).
+        </p>
+        <p>
+          Returns <code>404</code> if the image does not exist.
         </p>
 
         <h2>GET /api/session/:sessionId</h2>
+        <p>Returns all image IDs associated with a session.</p>
+        <pre>
+          <code>{`{
+  "images": ["uuid1", "uuid2", ...]
+}`}</code>
+        </pre>
         <p>
-          Returns <code>{`{ images: string[] }`}</code> — list of image IDs for the session.
+          Returns an empty array if the session has no images or does not exist.
         </p>
-
-        <h2>GET /api/image/:sessionId/:id</h2>
-        <p>Returns the PNG binary directly. Use as an image src.</p>
       </div>
     </main>
   );
