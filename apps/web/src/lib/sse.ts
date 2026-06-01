@@ -1,3 +1,21 @@
+export interface Viewport {
+  width: number;
+  height: number;
+}
+
+export function parseViewport(raw: unknown): Viewport | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const { width, height } = raw as Record<string, unknown>;
+  if (
+    typeof width === 'number' && typeof height === 'number' &&
+    Number.isInteger(width) && Number.isInteger(height) &&
+    width >= 320 && width <= 3840 && height >= 240 && height <= 2160
+  ) {
+    return { width, height };
+  }
+  return undefined;
+}
+
 export type SSEEvent =
   | { type: 'progress'; message: string }
   | { type: 'done'; message: string; data: Record<string, unknown> }
