@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GalleryImage } from './ConverterTabs';
 import Terminal, { type LogLine } from './Terminal';
 import { parseSSEStream } from '@/lib/sse';
@@ -17,6 +17,13 @@ export default function SnippetInput({ sessionId, onConversionComplete }: Props)
   const [html, setHtml] = useState('');
   const [loading, setLoading] = useState(false);
   const [lines, setLines] = useState<LogLine[]>([]);
+  const terminalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loading && lines.length > 0) {
+      terminalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [loading]);
 
   function addLine(line: LogLine) {
     setLines((prev) => [...prev, line]);
@@ -88,7 +95,9 @@ export default function SnippetInput({ sessionId, onConversionComplete }: Props)
         />
       </div>
 
-      <Terminal lines={lines} running={loading} />
+      <div ref={terminalRef}>
+        <Terminal lines={lines} running={loading} />
+      </div>
 
       <div className="converter-input__actions">
         <button type="submit" className="btn btn--primary" disabled={loading || !html.trim()}>
