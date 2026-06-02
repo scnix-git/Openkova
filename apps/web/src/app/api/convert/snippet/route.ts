@@ -10,10 +10,11 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { html, sessionId: providedSessionId, viewport: rawViewport } = body as {
+  const { html, sessionId: providedSessionId, viewport: rawViewport, fullPage } = body as {
     html?: unknown;
     sessionId?: unknown;
     viewport?: unknown;
+    fullPage?: unknown;
   };
 
   if (typeof html !== 'string' || html.trim().length === 0) {
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
       send({ type: 'progress', message: 'Launching virtual browser' });
       const imageId = await screenshotSnippet(html, sessionId, {
         viewport,
+        fullPage: fullPage === true,
         onProgress: (msg) => send({ type: 'progress', message: msg }),
       });
       send({

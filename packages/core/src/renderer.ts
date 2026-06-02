@@ -89,6 +89,7 @@ export interface Viewport {
 
 export interface ScreenshotOptions {
   viewport?: Viewport;
+  fullPage?: boolean;
   onProgress?: (msg: string) => void;
 }
 
@@ -119,7 +120,7 @@ export function createRenderer(storage: StorageAdapter) {
       options?.onProgress?.('Rendering HTML');
       await page.setContent(wrapHtml(html, viewport), { waitUntil: 'load', timeout: TIMEOUT });
       options?.onProgress?.('Taking snapshot');
-      const buffer = await page.screenshot({ type: 'png', fullPage: false });
+      const buffer = await page.screenshot({ type: 'png', fullPage: options?.fullPage ?? false });
       await storage.save(sessionId, imageId, Buffer.from(buffer));
     } finally {
       await page.close();
@@ -141,7 +142,7 @@ export function createRenderer(storage: StorageAdapter) {
       options?.onProgress?.(`Loading ${url}`);
       await page.goto(url, { waitUntil: 'load', timeout: TIMEOUT });
       options?.onProgress?.('Taking snapshot');
-      const buffer = await page.screenshot({ type: 'png', fullPage: false });
+      const buffer = await page.screenshot({ type: 'png', fullPage: options?.fullPage ?? false });
       await storage.save(sessionId, imageId, Buffer.from(buffer));
     } finally {
       await page.close();

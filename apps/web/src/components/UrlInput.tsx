@@ -8,12 +8,13 @@ import { parseSSEStream } from '@/lib/sse';
 interface Props {
   sessionId: string | null;
   viewport: Viewport;
+  fullPage: boolean;
   onConversionComplete: (sessionId: string, images: GalleryImage[]) => void;
 }
 
 const PAGE_SIZE = 10;
 
-export default function UrlInput({ sessionId, viewport, onConversionComplete }: Props) {
+export default function UrlInput({ sessionId, viewport, fullPage, onConversionComplete }: Props) {
   const [url, setUrl] = useState('');
   const [depth, setDepth] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -69,7 +70,7 @@ export default function UrlInput({ sessionId, viewport, onConversionComplete }: 
       const res = await fetch('/api/convert/url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: trimmed, sessionId, depth, viewport }),
+        body: JSON.stringify({ url: trimmed, sessionId, depth, viewport, fullPage }),
       });
 
       if (!res.ok) {
@@ -121,6 +122,7 @@ export default function UrlInput({ sessionId, viewport, onConversionComplete }: 
           offset: capturedCount,
           total: totalDiscovered,
           viewport,
+          fullPage,
         }),
       });
 

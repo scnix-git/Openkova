@@ -147,6 +147,36 @@ a:hover {
   border-bottom-color: var(--color-accent);
 }
 
+/* ── Toolbar right-side controls ── */
+.converter-tabs__controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.fullpage-btn {
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+  margin-bottom: 1px;
+}
+
+.fullpage-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+}
+
+.fullpage-btn--active {
+  color: var(--color-accent);
+  background: var(--color-surface);
+}
+
 /* ── Viewport selector ── */
 .viewport-selector {
   display: flex;
@@ -197,10 +227,22 @@ a:hover {
     align-items: stretch;
   }
 
-  .viewport-selector {
+  .converter-tabs__controls {
     order: -1;
     padding: 10px 0;
+    flex-wrap: wrap;
     gap: 4px;
+    align-items: center;
+  }
+
+  .fullpage-btn {
+    border-radius: var(--radius-sm);
+    margin-bottom: 0;
+  }
+
+  .viewport-selector {
+    gap: 4px;
+    flex: 1;
   }
 
   .viewport-selector__btn {
