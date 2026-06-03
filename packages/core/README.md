@@ -8,6 +8,8 @@ HTML to PNG screenshot engine powered by Puppeteer. Render snippets, local HTML 
 npm install @openkova/core
 # or
 pnpm add @openkova/core
+# or
+bun add @openkova/core
 ```
 
 `@openkova/core` uses `puppeteer-core` and expects a Chromium binary to be available. In most environments, install `puppeteer` as a dev dependency (it bundles its own Chrome) or set the `CHROMIUM_PATH` environment variable to point to a system-installed binary.
