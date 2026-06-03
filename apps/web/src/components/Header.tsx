@@ -14,12 +14,6 @@ export default function Header() {
           <Link href="/docs" className="header__nav-link">
             Docs
           </Link>
-          <Link href="/about" className="header__nav-link">
-            About
-          </Link>
-          <Link href="/how-it-works" className="header__nav-link">
-            How it works
-          </Link>
           <a href={githubUrl} target="_blank" rel="noopener noreferrer" className="header__nav-link">
             GitHub
           </a>
