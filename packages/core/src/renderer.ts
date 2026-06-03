@@ -1,5 +1,4 @@
 import puppeteer, { type Browser, type LaunchOptions } from 'puppeteer-core';
-import { v4 as uuidv4 } from 'uuid';
 import { LocalStorageAdapter, type StorageAdapter } from './storage.js';
 
 const DEFAULT_VIEWPORT = { width: 1280, height: 800 };
@@ -89,6 +88,7 @@ export interface Viewport {
 
 export interface ScreenshotOptions {
   viewport?: Viewport;
+  fullPage?: boolean;
   onProgress?: (msg: string) => void;
 }
 
@@ -111,7 +111,7 @@ export function createRenderer(storage: StorageAdapter) {
     options?: ScreenshotOptions,
   ): Promise<string> {
     const viewport = options?.viewport ?? DEFAULT_VIEWPORT;
-    const imageId = uuidv4();
+    const imageId = crypto.randomUUID();
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
@@ -119,7 +119,7 @@ export function createRenderer(storage: StorageAdapter) {
       options?.onProgress?.('Rendering HTML');
       await page.setContent(wrapHtml(html, viewport), { waitUntil: 'load', timeout: TIMEOUT });
       options?.onProgress?.('Taking snapshot');
-      const buffer = await page.screenshot({ type: 'png', fullPage: false });
+      const buffer = await page.screenshot({ type: 'png', fullPage: options?.fullPage ?? false });
       await storage.save(sessionId, imageId, Buffer.from(buffer));
     } finally {
       await page.close();
@@ -133,7 +133,7 @@ export function createRenderer(storage: StorageAdapter) {
     options?: ScreenshotOptions,
   ): Promise<string> {
     const viewport = options?.viewport ?? DEFAULT_VIEWPORT;
-    const imageId = uuidv4();
+    const imageId = crypto.randomUUID();
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
@@ -141,7 +141,7 @@ export function createRenderer(storage: StorageAdapter) {
       options?.onProgress?.(`Loading ${url}`);
       await page.goto(url, { waitUntil: 'load', timeout: TIMEOUT });
       options?.onProgress?.('Taking snapshot');
-      const buffer = await page.screenshot({ type: 'png', fullPage: false });
+      const buffer = await page.screenshot({ type: 'png', fullPage: options?.fullPage ?? false });
       await storage.save(sessionId, imageId, Buffer.from(buffer));
     } finally {
       await page.close();

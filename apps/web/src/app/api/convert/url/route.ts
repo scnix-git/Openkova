@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
 
   const raw = body as Record<string, unknown>;
   const viewport = parseViewport(raw.viewport);
+  const fullPage = raw.fullPage === true;
 
   // ── Direct mode: screenshot a pre-known list of URLs (pagination) ──────────
   if (Array.isArray(raw.urls)) {
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
         for (let i = 0; i < urls.length; i++) {
           const u = urls[i]!;
           send({ type: 'progress', message: `Capturing page ${offset + i + 1}/${total}: ${u}` });
-          const imageId = await screenshotUrl(u, sessionId, { viewport });
+          const imageId = await screenshotUrl(u, sessionId, { viewport, fullPage });
           results.push({ imageId, url: u });
         }
 
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
       for (let i = 0; i < batch.length; i++) {
         const u = batch[i]!;
         send({ type: 'progress', message: `Capturing page ${i + 1}/${total}: ${u}` });
-        const imageId = await screenshotUrl(u, sessionId, { viewport });
+        const imageId = await screenshotUrl(u, sessionId, { viewport, fullPage });
         results.push({ imageId, url: u });
       }
 
