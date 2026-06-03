@@ -1,5 +1,4 @@
 import puppeteer, { type Browser, type LaunchOptions } from 'puppeteer-core';
-import { v4 as uuidv4 } from 'uuid';
 import { LocalStorageAdapter, type StorageAdapter } from './storage.js';
 
 const DEFAULT_VIEWPORT = { width: 1280, height: 800 };
@@ -112,7 +111,7 @@ export function createRenderer(storage: StorageAdapter) {
     options?: ScreenshotOptions,
   ): Promise<string> {
     const viewport = options?.viewport ?? DEFAULT_VIEWPORT;
-    const imageId = uuidv4();
+    const imageId = crypto.randomUUID();
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
@@ -134,7 +133,7 @@ export function createRenderer(storage: StorageAdapter) {
     options?: ScreenshotOptions,
   ): Promise<string> {
     const viewport = options?.viewport ?? DEFAULT_VIEWPORT;
-    const imageId = uuidv4();
+    const imageId = crypto.randomUUID();
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
