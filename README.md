@@ -1,32 +1,60 @@
 # Openkova
 
+[![npm](https://img.shields.io/npm/v/@openkova/core)](https://www.npmjs.com/package/@openkova/core)
+[![license](https://img.shields.io/github/license/scnix-git/Openkova)](LICENSE)
+
 Convert HTML to images. Paste a snippet, upload files, or point it at a URL — Openkova renders each page in a headless Chromium browser and returns a PNG screenshot.
+
+## Use as a library
+
+```bash
+npm install @openkova/core
+# or
+pnpm add @openkova/core
+# or
+bun add @openkova/core
+```
+
+```js
+import { screenshotSnippet, createSession } from '@openkova/core';
+
+const sessionId = createSession();
+const imageId = await screenshotSnippet('<h1>Hello</h1>', sessionId, {
+  viewport: { width: 1280, height: 800 },
+  fullPage: true,
+});
+```
+
+See [`packages/core/README.md`](packages/core/README.md) for the full API reference.
 
 ## Features
 
-- **HTML Snippet** — paste raw HTML, get a screenshot at 1280×800
+- **HTML Snippet** — paste raw HTML and screenshot it at any viewport size
 - **File upload** — upload one or more `.html` files, each rendered separately
-- **URL crawl** — screenshot a live site and up to 10 same-origin linked pages
-- **Live terminal** — real-time progress stream as the browser launches and captures pages
+- **URL crawl** — screenshot a live site and same-origin linked pages, 10 at a time
+- **Full-page capture** — capture the full scrollable height, not just the viewport
+- **Viewport selection** — Mobile (390px), Desktop (1280px), or Wide (1920px)
+- **Live terminal** — real-time SSE progress stream as the browser captures pages
 - **REST API** — all conversions available as SSE-streaming HTTP endpoints
+- **Download All** — ZIP download of all screenshots in a session
 
 ## Stack
 
-- [Next.js 16](https://nextjs.org) (App Router, standalone output)
+- [Next.js](https://nextjs.org) (App Router, standalone output)
 - [Puppeteer Core](https://pptr.dev) + system Chromium
 - [pnpm workspaces](https://pnpm.io/workspaces) monorepo — `packages/core` + `apps/web`
 - Deployed on [Railway](https://railway.app) via Docker
 
-## Getting started
+## Self-hosting
 
 ### Prerequisites
 
-- Node.js 24
+- Node.js 18+
 - pnpm 10+
 - Google Chrome or Chromium installed locally
 
 ```bash
-corepack enable
+npm install -g pnpm
 ```
 
 ### Install & run
@@ -52,17 +80,17 @@ Screenshots are saved to `./data` by default. Override with `OPENKOVA_STORAGE_PA
 docker compose up --build
 ```
 
-This builds the multi-stage image (Node 24 + system Chromium on Debian) and mounts a persistent volume at `/data` for screenshots.
+This builds the multi-stage image (Node + system Chromium on Debian) and mounts a persistent volume at `/data` for screenshots.
 
 ## API
 
 All convert endpoints stream [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) rather than a single JSON response. Progress messages arrive as `progress` events; the final result arrives as a `done` event.
 
 ```
-POST /api/convert/snippet        { html, sessionId? }
-POST /api/convert/file           multipart/form-data  files[], sessionId?
-POST /api/convert/url            { url, depth?, sessionId? }  — crawl mode
-POST /api/convert/url            { urls[], sessionId, offset, total }  — paginate mode
+POST /api/convert/snippet        { html, sessionId?, viewport?, fullPage? }
+POST /api/convert/file           multipart/form-data  files[], sessionId?, viewport?, fullPage?
+POST /api/convert/url            { url, depth?, sessionId?, viewport?, fullPage? }  — crawl mode
+POST /api/convert/url            { urls[], sessionId, offset, total, viewport?, fullPage? }  — paginate mode
 GET  /api/image/:sid/:id         → PNG binary
 GET  /api/session/:sid/download  → ZIP of all session screenshots
 GET  /api/session/:sid           → { images: string[] }
@@ -76,7 +104,11 @@ Full documentation is available at `/docs` in the running app.
 const res = await fetch('/api/convert/snippet', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ html: '<h1>Hello</h1>' }),
+  body: JSON.stringify({
+    html: '<h1>Hello</h1>',
+    viewport: { width: 1280, height: 800 },
+    fullPage: true,
+  }),
 });
 
 const reader = res.body.getReader();
