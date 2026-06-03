@@ -8,10 +8,11 @@ import { parseSSEStream } from '@/lib/sse';
 interface Props {
   sessionId: string | null;
   viewport: Viewport;
+  fullPage: boolean;
   onConversionComplete: (sessionId: string, images: GalleryImage[]) => void;
 }
 
-export default function FileInput({ sessionId, viewport, onConversionComplete }: Props) {
+export default function FileInput({ sessionId, viewport, fullPage, onConversionComplete }: Props) {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [lines, setLines] = useState<LogLine[]>([]);
@@ -44,6 +45,7 @@ export default function FileInput({ sessionId, viewport, onConversionComplete }:
       for (const file of files) formData.append('files', file);
       if (sessionId) formData.append('sessionId', sessionId);
       formData.append('viewport', JSON.stringify(viewport));
+      formData.append('fullPage', String(fullPage));
 
       const res = await fetch('/api/convert/file', { method: 'POST', body: formData });
 

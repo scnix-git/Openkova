@@ -8,13 +8,14 @@ import { parseSSEStream } from '@/lib/sse';
 interface Props {
   sessionId: string | null;
   viewport: Viewport;
+  fullPage: boolean;
   onConversionComplete: (sessionId: string, images: GalleryImage[]) => void;
 }
 
 const PLACEHOLDER = `<h1 style="font-family: sans-serif; color: #7c6af7;">Hello, Openkova!</h1>
 <p style="font-family: sans-serif; color: #666;">Paste any HTML here to convert it to an image.</p>`;
 
-export default function SnippetInput({ sessionId, viewport, onConversionComplete }: Props) {
+export default function SnippetInput({ sessionId, viewport, fullPage, onConversionComplete }: Props) {
   const [html, setHtml] = useState('');
   const [loading, setLoading] = useState(false);
   const [lines, setLines] = useState<LogLine[]>([]);
@@ -42,7 +43,7 @@ export default function SnippetInput({ sessionId, viewport, onConversionComplete
       const res = await fetch('/api/convert/snippet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html: trimmed, sessionId, viewport }),
+        body: JSON.stringify({ html: trimmed, sessionId, viewport, fullPage }),
       });
 
       if (!res.ok || !res.body) {

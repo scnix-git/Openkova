@@ -3,8 +3,12 @@ import './globals.css';
 import Header from '@/components/Header';
 
 export const metadata: Metadata = {
-  title: 'Openkova — HTML to Image',
-  description: 'Open-source HTML-to-image conversion platform powered by Puppeteer.',
+  title: {
+    default: 'Openkova — HTML to Image',
+    template: '%s — Openkova',
+  },
+  description:
+    'Convert HTML snippets, uploaded files, or any website URL to pixel-accurate PNG screenshots. Open-source, powered by Puppeteer and headless Chromium.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
