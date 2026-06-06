@@ -2,6 +2,8 @@
 
 HTML to PNG screenshot engine powered by Puppeteer. Render snippets, local HTML files, or live URLs to pixel-accurate images — with configurable viewport, full-page capture, and pluggable storage.
 
+**Website & docs:** [openkova.dev](https://www.openkova.dev)
+
 ## Install
 
 ```bash
