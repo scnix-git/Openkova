@@ -7,6 +7,7 @@ import UrlInput from './UrlInput';
 import Gallery from './Gallery';
 
 type Tab = 'snippet' | 'files' | 'url';
+export type OutputFormat = 'png' | 'jpeg' | 'webp' | 'pdf';
 
 export interface GalleryImage {
   imageId: string;
@@ -25,6 +26,13 @@ const VIEWPORTS: Viewport[] = [
   { label: 'Wide', width: 1920, height: 1080 },
 ];
 
+const FORMATS: { id: OutputFormat; label: string }[] = [
+  { id: 'png', label: 'PNG' },
+  { id: 'jpeg', label: 'JPEG' },
+  { id: 'webp', label: 'WebP' },
+  { id: 'pdf', label: 'PDF' },
+];
+
 interface Props {
   initialSessionId: string | null;
 }
@@ -35,6 +43,7 @@ export default function ConverterTabs({ initialSessionId }: Props) {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [viewport, setViewport] = useState<Viewport>(VIEWPORTS[1]!);
   const [fullPage, setFullPage] = useState(false);
+  const [format, setFormat] = useState<OutputFormat>('png');
 
   function handleConversionComplete(newSessionId: string, newImages: GalleryImage[]) {
     setSessionId(newSessionId);
@@ -73,6 +82,18 @@ export default function ConverterTabs({ initialSessionId }: Props) {
             Full page
           </button>
 
+          <div className="format-selector" role="group" aria-label="Output format">
+            {FORMATS.map((f) => (
+              <button
+                key={f.id}
+                className={`format-selector__btn${format === f.id ? ' format-selector__btn--active' : ''}`}
+                onClick={() => setFormat(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
           <div className="viewport-selector" role="group" aria-label="Viewport size">
             {VIEWPORTS.map((vp) => (
               <button
@@ -90,13 +111,13 @@ export default function ConverterTabs({ initialSessionId }: Props) {
       </div>
 
       {activeTab === 'snippet' && (
-        <SnippetInput sessionId={sessionId} viewport={viewport} fullPage={fullPage} onConversionComplete={handleConversionComplete} />
+        <SnippetInput sessionId={sessionId} viewport={viewport} fullPage={fullPage} format={format} onConversionComplete={handleConversionComplete} />
       )}
       {activeTab === 'files' && (
-        <FileInput sessionId={sessionId} viewport={viewport} fullPage={fullPage} onConversionComplete={handleConversionComplete} />
+        <FileInput sessionId={sessionId} viewport={viewport} fullPage={fullPage} format={format} onConversionComplete={handleConversionComplete} />
       )}
       {activeTab === 'url' && (
-        <UrlInput sessionId={sessionId} viewport={viewport} fullPage={fullPage} onConversionComplete={handleConversionComplete} />
+        <UrlInput sessionId={sessionId} viewport={viewport} fullPage={fullPage} format={format} onConversionComplete={handleConversionComplete} />
       )}
 
       {images.length > 0 && sessionId && (

@@ -81,6 +81,15 @@ process.on('exit', () => {
   }
 });
 
+export type OutputFormat = 'png' | 'jpeg' | 'webp' | 'pdf';
+
+const FORMAT_EXT: Record<OutputFormat, string> = {
+  png: 'png',
+  jpeg: 'jpg',
+  webp: 'webp',
+  pdf: 'pdf',
+};
+
 export interface Viewport {
   width: number;
   height: number;
@@ -89,6 +98,7 @@ export interface Viewport {
 export interface ScreenshotOptions {
   viewport?: Viewport;
   fullPage?: boolean;
+  format?: OutputFormat;
   onProgress?: (msg: string) => void;
 }
 
@@ -104,6 +114,18 @@ function wrapHtml(html: string, viewport: Viewport): string {
 </html>`;
 }
 
+async function capture(page: import('puppeteer-core').Page, options: ScreenshotOptions): Promise<Buffer> {
+  const format = options.format ?? 'png';
+  const fullPage = options.fullPage ?? false;
+  if (format === 'pdf') {
+    return Buffer.from(await page.pdf({ printBackground: true }));
+  }
+  const quality = format === 'png' ? undefined : 85;
+  return Buffer.from(
+    await page.screenshot({ type: format, fullPage, ...(quality !== undefined ? { quality } : {}) }),
+  );
+}
+
 export function createRenderer(storage: StorageAdapter) {
   async function screenshotSnippet(
     html: string,
@@ -111,7 +133,8 @@ export function createRenderer(storage: StorageAdapter) {
     options?: ScreenshotOptions,
   ): Promise<string> {
     const viewport = options?.viewport ?? DEFAULT_VIEWPORT;
-    const imageId = crypto.randomUUID();
+    const ext = FORMAT_EXT[options?.format ?? 'png'];
+    const imageId = `${crypto.randomUUID()}.${ext}`;
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
@@ -119,8 +142,7 @@ export function createRenderer(storage: StorageAdapter) {
       options?.onProgress?.('Rendering HTML');
       await page.setContent(wrapHtml(html, viewport), { waitUntil: 'load', timeout: TIMEOUT });
       options?.onProgress?.('Taking snapshot');
-      const buffer = await page.screenshot({ type: 'png', fullPage: options?.fullPage ?? false });
-      await storage.save(sessionId, imageId, Buffer.from(buffer));
+      await storage.save(sessionId, imageId, await capture(page, options ?? {}));
     } finally {
       await page.close();
     }
@@ -133,7 +155,8 @@ export function createRenderer(storage: StorageAdapter) {
     options?: ScreenshotOptions,
   ): Promise<string> {
     const viewport = options?.viewport ?? DEFAULT_VIEWPORT;
-    const imageId = crypto.randomUUID();
+    const ext = FORMAT_EXT[options?.format ?? 'png'];
+    const imageId = `${crypto.randomUUID()}.${ext}`;
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
@@ -141,8 +164,7 @@ export function createRenderer(storage: StorageAdapter) {
       options?.onProgress?.(`Loading ${url}`);
       await page.goto(url, { waitUntil: 'load', timeout: TIMEOUT });
       options?.onProgress?.('Taking snapshot');
-      const buffer = await page.screenshot({ type: 'png', fullPage: options?.fullPage ?? false });
-      await storage.save(sessionId, imageId, Buffer.from(buffer));
+      await storage.save(sessionId, imageId, await capture(page, options ?? {}));
     } finally {
       await page.close();
     }

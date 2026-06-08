@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@openkova/core)](https://www.npmjs.com/package/@openkova/core)
 [![license](https://img.shields.io/github/license/scnix-git/Openkova)](LICENSE)
 
-Convert HTML to images. Paste a snippet, upload files, or point it at a URL — Openkova renders each page in a headless Chromium browser and returns a PNG screenshot.
+Convert HTML to images. Paste a snippet, upload files, or point it at a URL — Openkova renders each page in a headless Chromium browser and returns a PNG, JPEG, WebP, or PDF file.
 
 ## Use as a library
 
@@ -22,6 +22,7 @@ const sessionId = createSession();
 const imageId = await screenshotSnippet('<h1>Hello</h1>', sessionId, {
   viewport: { width: 1280, height: 800 },
   fullPage: true,
+  format: 'png', // 'png' | 'jpeg' | 'webp' | 'pdf'
 });
 ```
 
@@ -32,11 +33,12 @@ See [`packages/core/README.md`](packages/core/README.md) for the full API refere
 - **HTML Snippet** — paste raw HTML and screenshot it at any viewport size
 - **File upload** — upload one or more `.html` files, each rendered separately
 - **URL crawl** — screenshot a live site and same-origin linked pages, 10 at a time
+- **Output formats** — PNG, JPEG, WebP, or PDF
 - **Full-page capture** — capture the full scrollable height, not just the viewport
 - **Viewport selection** — Mobile (390px), Desktop (1280px), or Wide (1920px)
 - **Live terminal** — real-time SSE progress stream as the browser captures pages
 - **REST API** — all conversions available as SSE-streaming HTTP endpoints
-- **Download All** — ZIP download of all screenshots in a session
+- **Download All** — ZIP download of all files in a session
 
 ## Stack
 
@@ -87,14 +89,16 @@ This builds the multi-stage image (Node + system Chromium on Debian) and mounts 
 All convert endpoints stream [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) rather than a single JSON response. Progress messages arrive as `progress` events; the final result arrives as a `done` event.
 
 ```
-POST /api/convert/snippet        { html, sessionId?, viewport?, fullPage? }
-POST /api/convert/file           multipart/form-data  files[], sessionId?, viewport?, fullPage?
-POST /api/convert/url            { url, depth?, sessionId?, viewport?, fullPage? }  — crawl mode
-POST /api/convert/url            { urls[], sessionId, offset, total, viewport?, fullPage? }  — paginate mode
-GET  /api/image/:sid/:id         → PNG binary
-GET  /api/session/:sid/download  → ZIP of all session screenshots
+POST /api/convert/snippet        { html, sessionId?, viewport?, fullPage?, format? }
+POST /api/convert/file           multipart/form-data  files[], sessionId?, viewport?, fullPage?, format?
+POST /api/convert/url            { url, depth?, sessionId?, viewport?, fullPage?, format? }  — crawl mode
+POST /api/convert/url            { urls[], sessionId, offset, total, viewport?, fullPage?, format? }  — paginate mode
+GET  /api/image/:sid/:id         → file binary (PNG/JPEG/WebP/PDF)
+GET  /api/session/:sid/download  → ZIP of all session files
 GET  /api/session/:sid           → { images: string[] }
 ```
+
+`format` accepts `"png"` (default), `"jpeg"`, `"webp"`, or `"pdf"`. The returned `imageId` includes the file extension (e.g. `abc123.jpg`).
 
 Full documentation is available at `/docs` in the running app.
 
@@ -108,6 +112,7 @@ const res = await fetch('/api/convert/snippet', {
     html: '<h1>Hello</h1>',
     viewport: { width: 1280, height: 800 },
     fullPage: true,
+    format: 'pdf',
   }),
 });
 
@@ -143,14 +148,14 @@ railway.toml    Railway deployment config
 
 ## Storage retention
 
-Screenshots are automatically deleted **24 hours** after the session directory was last written to. A cleanup pass runs every hour on server startup via `instrumentation.ts`. Download your images before then using the **Download All** button or the `/api/session/:sid/download` ZIP endpoint.
+Files are automatically deleted **24 hours** after the session directory was last written to. A cleanup pass runs every hour on server startup via `instrumentation.ts`. Download your files before then using the **Download All** button or the `/api/session/:sid/download` ZIP endpoint.
 
 ## Environment variables
 
 | Variable | Default | Description |
 |---|---|---|
 | `CHROMIUM_PATH` | auto-detected | Path to Chrome/Chromium binary |
-| `OPENKOVA_STORAGE_PATH` | `./data` | Directory for saved screenshots |
+| `OPENKOVA_STORAGE_PATH` | `./data` | Directory for saved files |
 | `PORT` | `3000` | HTTP port |
 
 ## License

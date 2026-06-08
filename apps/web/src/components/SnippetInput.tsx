@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { GalleryImage, Viewport } from './ConverterTabs';
+import type { GalleryImage, OutputFormat, Viewport } from './ConverterTabs';
 import Terminal, { type LogLine } from './Terminal';
 import { parseSSEStream } from '@/lib/sse';
 
@@ -9,13 +9,14 @@ interface Props {
   sessionId: string | null;
   viewport: Viewport;
   fullPage: boolean;
+  format: OutputFormat;
   onConversionComplete: (sessionId: string, images: GalleryImage[]) => void;
 }
 
 const PLACEHOLDER = `<h1 style="font-family: sans-serif; color: #7c6af7;">Hello, Openkova!</h1>
 <p style="font-family: sans-serif; color: #666;">Paste any HTML here to convert it to an image.</p>`;
 
-export default function SnippetInput({ sessionId, viewport, fullPage, onConversionComplete }: Props) {
+export default function SnippetInput({ sessionId, viewport, fullPage, format, onConversionComplete }: Props) {
   const [html, setHtml] = useState('');
   const [loading, setLoading] = useState(false);
   const [lines, setLines] = useState<LogLine[]>([]);
@@ -43,7 +44,7 @@ export default function SnippetInput({ sessionId, viewport, fullPage, onConversi
       const res = await fetch('/api/convert/snippet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html: trimmed, sessionId, viewport, fullPage }),
+        body: JSON.stringify({ html: trimmed, sessionId, viewport, fullPage, format }),
       });
 
       if (!res.ok || !res.body) {
