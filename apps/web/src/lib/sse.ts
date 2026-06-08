@@ -21,7 +21,8 @@ export type SSEEvent =
   | { type: 'done'; message: string; data: Record<string, unknown> }
   | { type: 'error'; message: string };
 
-const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
+// Cookie TTL: 7 days (independent of the 24-hour storage cleanup)
+const SESSION_COOKIE_TTL_SECS = 60 * 60 * 24 * 7;
 
 export function sseResponse(
   fn: (send: (event: SSEEvent) => void) => Promise<void>,
@@ -47,7 +48,7 @@ export function sseResponse(
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
-      'Set-Cookie': `openkova_session=${sessionId}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`,
+      'Set-Cookie': `openkova_session=${sessionId}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_COOKIE_TTL_SECS}`,
     },
   });
 }

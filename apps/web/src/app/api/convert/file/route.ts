@@ -1,12 +1,10 @@
 import { type NextRequest } from 'next/server';
-import { type OutputFormat, createSession, screenshotSnippet } from '@openkova/core';
-import { sseResponse, parseViewport } from '@/lib/sse';
+import { createSession, screenshotSnippet } from '@openkova/core';
+import { sseResponse } from '@/lib/sse';
+import { parseFormat, parseViewport } from '@/lib/parse';
 
-const VALID_FORMATS = new Set<OutputFormat>(['png', 'jpeg', 'webp', 'pdf']);
-
-function parseFormat(raw: unknown): OutputFormat {
-  return VALID_FORMATS.has(raw as OutputFormat) ? (raw as OutputFormat) : 'png';
-}
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB per file
+const MAX_FILES = 20;
 
 export async function POST(req: NextRequest) {
   let formData: FormData;
@@ -21,6 +19,15 @@ export async function POST(req: NextRequest) {
 
   if (files.length === 0) {
     return Response.json({ error: 'No HTML files provided' }, { status: 400 });
+  }
+
+  if (files.length > MAX_FILES) {
+    return Response.json({ error: `Too many files (max ${MAX_FILES})` }, { status: 400 });
+  }
+
+  const oversized = files.find((f) => f.size > MAX_FILE_SIZE);
+  if (oversized) {
+    return Response.json({ error: `File "${oversized.name}" exceeds 10 MB limit` }, { status: 413 });
   }
 
   const providedSessionId = formData.get('sessionId');

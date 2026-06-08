@@ -1,12 +1,34 @@
 const LINK_REGEX = /<a\s[^>]*href=["']([^"']+)["']/gi;
 const FETCH_TIMEOUT = 10_000;
 
+// Block requests to private/loopback ranges to prevent SSRF.
+const PRIVATE_HOST_RE = /^(localhost|.*\.local)$/i;
+const PRIVATE_IP_RE =
+  /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|0\.|::1$|fc[\da-f]{2}:|fe80:)/i;
+
+function isSafeHost(hostname: string): boolean {
+  return !PRIVATE_HOST_RE.test(hostname) && !PRIVATE_IP_RE.test(hostname);
+}
+
+/**
+ * Fetch `rootUrl`, extract all same-origin `<a href>` links, and return the
+ * full list of URLs to capture (root first).
+ *
+ * @param rootUrl    The starting URL. Must be http/https on a public host.
+ * @param depth      1 = root + its direct links (default). Max 2.
+ * @param onProgress Optional callback for progress messages.
+ */
 export async function crawlUrl(
   rootUrl: string,
   depth = 1,
   onProgress?: (msg: string) => void,
 ): Promise<string[]> {
-  const origin = new URL(rootUrl).origin;
+  const parsed = new URL(rootUrl);
+  if (!isSafeHost(parsed.hostname)) {
+    throw new Error(`Crawling private/internal hosts is not allowed: ${parsed.hostname}`);
+  }
+
+  const origin = parsed.origin;
   const seen = new Set<string>();
   seen.add(normalizeUrl(rootUrl));
 
@@ -57,7 +79,6 @@ function extractSameOriginLinks(
     const href = match[1];
     if (!href) continue;
 
-    // Skip javascript: and mailto: etc.
     if (/^[a-z]+:/i.test(href) && !href.startsWith('http') && !href.startsWith('/')) continue;
 
     let resolved: URL;
@@ -68,6 +89,7 @@ function extractSameOriginLinks(
     }
 
     if (resolved.origin !== origin) continue;
+    if (!isSafeHost(resolved.hostname)) continue;
 
     const normalized = normalizeUrl(resolved.toString());
     if (seen.has(normalized)) continue;

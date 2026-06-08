@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { GalleryImage, OutputFormat, Viewport } from './ConverterTabs';
-import Terminal, { type LogLine } from './Terminal';
-import { parseSSEStream } from '@/lib/sse';
+import Terminal from './Terminal';
+import { useSSEStream } from '@/hooks/useSSEStream';
 
 interface Props {
   sessionId: string | null;
@@ -18,84 +18,45 @@ const PAGE_SIZE = 10;
 export default function UrlInput({ sessionId, viewport, fullPage, format, onConversionComplete }: Props) {
   const [url, setUrl] = useState('');
   const [depth, setDepth] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [lines, setLines] = useState<LogLine[]>([]);
   const [remaining, setRemaining] = useState<string[]>([]);
   const [totalDiscovered, setTotalDiscovered] = useState(0);
   const [capturedCount, setCapturedCount] = useState(0);
+  const { lines, loading, setLoading, addLine, reset, runStream } = useSSEStream();
   const terminalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!loading && lines.length > 0) {
       terminalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [loading]);
-
-  function addLine(line: LogLine) {
-    setLines((prev) => [...prev, line]);
-  }
-
-  async function runStream(
-    res: Response,
-    onDone: (data: Record<string, unknown>) => void,
-  ): Promise<void> {
-    if (!res.body) throw new Error('No response body');
-    let gotDone = false;
-    for await (const event of parseSSEStream(res.body)) {
-      if (event.type === 'progress') {
-        addLine({ message: event.message, status: 'progress' });
-      } else if (event.type === 'done') {
-        gotDone = true;
-        addLine({ message: event.message, status: 'done' });
-        onDone(event.data);
-      } else if (event.type === 'error') {
-        addLine({ message: event.message, status: 'error' });
-        return;
-      }
-    }
-    if (!gotDone) addLine({ message: 'Conversion failed unexpectedly', status: 'error' });
-  }
+  }, [loading, lines.length]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = url.trim();
     if (!trimmed) return;
-
     setLoading(true);
-    setLines([]);
+    reset();
     setRemaining([]);
     setTotalDiscovered(0);
     setCapturedCount(0);
-
     try {
       const res = await fetch('/api/convert/url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: trimmed, sessionId, depth, viewport, fullPage, format }),
       });
-
       if (!res.ok) {
         let message = `Server error ${res.status}`;
-        try {
-          const data = (await res.json()) as { error?: string };
-          if (data.error) message = data.error;
-        } catch {}
+        try { const d = (await res.json()) as { error?: string }; if (d.error) message = d.error; } catch {}
         addLine({ message, status: 'error' });
         return;
       }
-
       await runStream(res, (data) => {
-        const d = data as {
-          sessionId: string;
-          results: { imageId: string; url: string }[];
-          remaining: string[];
-          total: number;
-        };
+        const d = data as { sessionId: string; results: { imageId: string; url: string }[]; remaining: string[]; total: number };
         setRemaining(d.remaining ?? []);
         setTotalDiscovered(d.total ?? 0);
         setCapturedCount(d.results.length);
-        const images: GalleryImage[] = d.results.map((r) => ({ imageId: r.imageId, label: r.url }));
-        onConversionComplete(d.sessionId, images);
+        onConversionComplete(d.sessionId, d.results.map((r) => ({ imageId: r.imageId, label: r.url })));
       });
     } catch (err) {
       addLine({ message: err instanceof Error ? err.message : 'Conversion failed', status: 'error' });
@@ -106,48 +67,27 @@ export default function UrlInput({ sessionId, viewport, fullPage, format, onConv
 
   async function handleGetNext() {
     if (!sessionId || remaining.length === 0) return;
-
     const batch = remaining.slice(0, PAGE_SIZE);
     const nextRemaining = remaining.slice(PAGE_SIZE);
-
     setLoading(true);
-    setLines([]);
-
+    reset();
     try {
       const res = await fetch('/api/convert/url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          urls: batch,
-          sessionId,
-          offset: capturedCount,
-          total: totalDiscovered,
-          viewport,
-          fullPage,
-          format,
-        }),
+        body: JSON.stringify({ urls: batch, sessionId, offset: capturedCount, total: totalDiscovered, viewport, fullPage, format }),
       });
-
       if (!res.ok) {
         let message = `Server error ${res.status}`;
-        try {
-          const data = (await res.json()) as { error?: string };
-          if (data.error) message = data.error;
-        } catch {}
+        try { const d = (await res.json()) as { error?: string }; if (d.error) message = d.error; } catch {}
         addLine({ message, status: 'error' });
         return;
       }
-
       await runStream(res, (data) => {
-        const d = data as {
-          sessionId: string;
-          results: { imageId: string; url: string }[];
-          total: number;
-        };
+        const d = data as { sessionId: string; results: { imageId: string; url: string }[]; total: number };
         setRemaining(nextRemaining);
         setCapturedCount(capturedCount + d.results.length);
-        const images: GalleryImage[] = d.results.map((r) => ({ imageId: r.imageId, label: r.url }));
-        onConversionComplete(d.sessionId, images);
+        onConversionComplete(d.sessionId, d.results.map((r) => ({ imageId: r.imageId, label: r.url })));
       });
     } catch (err) {
       addLine({ message: err instanceof Error ? err.message : 'Conversion failed', status: 'error' });
@@ -174,9 +114,7 @@ export default function UrlInput({ sessionId, viewport, fullPage, format, onConv
             placeholder="https://example.com"
           />
           <div>
-            <label className="converter-input__label" htmlFor="depth-select">
-              Depth
-            </label>
+            <label className="converter-input__label" htmlFor="depth-select">Depth</label>
             <select
               id="depth-select"
               className="converter-input__select"
@@ -199,15 +137,8 @@ export default function UrlInput({ sessionId, viewport, fullPage, format, onConv
 
       <div className="converter-input__actions">
         <button type="submit" className="btn btn--primary" disabled={loading || !url.trim()}>
-          {loading ? (
-            <>
-              <span className="spinner" /> Crawling &amp; converting…
-            </>
-          ) : (
-            'Convert URL'
-          )}
+          {loading ? <><span className="spinner" /> Crawling &amp; converting…</> : 'Convert URL'}
         </button>
-
         {remaining.length > 0 && !loading && (
           <button type="button" className="btn btn--ghost" onClick={handleGetNext}>
             Get next {nextBatchSize} page{nextBatchSize !== 1 ? 's' : ''}

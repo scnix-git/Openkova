@@ -1,12 +1,9 @@
 import { type NextRequest } from 'next/server';
-import { type OutputFormat, createSession, screenshotSnippet } from '@openkova/core';
-import { sseResponse, parseViewport } from '@/lib/sse';
+import { createSession, screenshotSnippet } from '@openkova/core';
+import { sseResponse } from '@/lib/sse';
+import { parseFormat, parseViewport } from '@/lib/parse';
 
-const VALID_FORMATS = new Set<OutputFormat>(['png', 'jpeg', 'webp', 'pdf']);
-
-function parseFormat(raw: unknown): OutputFormat {
-  return VALID_FORMATS.has(raw as OutputFormat) ? (raw as OutputFormat) : 'png';
-}
+const MAX_HTML_BYTES = 5 * 1024 * 1024; // 5 MB
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -26,6 +23,10 @@ export async function POST(req: NextRequest) {
 
   if (typeof html !== 'string' || html.trim().length === 0) {
     return Response.json({ error: 'html must be a non-empty string' }, { status: 400 });
+  }
+
+  if (Buffer.byteLength(html, 'utf8') > MAX_HTML_BYTES) {
+    return Response.json({ error: 'html exceeds 5 MB limit' }, { status: 413 });
   }
 
   const sessionId =
