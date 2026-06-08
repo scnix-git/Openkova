@@ -1,8 +1,7 @@
 import puppeteer, { type Browser, type LaunchOptions } from 'puppeteer-core';
-import { v4 as uuidv4 } from 'uuid';
 import { LocalStorageAdapter, type StorageAdapter } from './storage.js';
 
-const VIEWPORT = { width: 1280, height: 800 };
+const DEFAULT_VIEWPORT = { width: 1280, height: 800 };
 const TIMEOUT = 30_000;
 
 const ARGS = [
@@ -82,34 +81,68 @@ process.on('exit', () => {
   }
 });
 
-function wrapHtml(html: string): string {
+export type OutputFormat = 'png' | 'jpeg' | 'webp' | 'pdf';
+
+const FORMAT_EXT: Record<OutputFormat, string> = {
+  png: 'png',
+  jpeg: 'jpg',
+  webp: 'webp',
+  pdf: 'pdf',
+};
+
+export interface Viewport {
+  width: number;
+  height: number;
+}
+
+export interface ScreenshotOptions {
+  viewport?: Viewport;
+  fullPage?: boolean;
+  format?: OutputFormat;
+  onProgress?: (msg: string) => void;
+}
+
+function wrapHtml(html: string, viewport: Viewport): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=1280">
+  <meta name="viewport" content="width=${viewport.width}">
   <style>* { box-sizing: border-box; } body { margin: 0; }</style>
 </head>
 <body>${html}</body>
 </html>`;
 }
 
+async function capture(page: import('puppeteer-core').Page, options: ScreenshotOptions): Promise<Buffer> {
+  const format = options.format ?? 'png';
+  const fullPage = options.fullPage ?? false;
+  if (format === 'pdf') {
+    return Buffer.from(await page.pdf({ printBackground: true }));
+  }
+  const quality = format === 'png' ? undefined : 85;
+  return Buffer.from(
+    await page.screenshot({ type: format, fullPage, ...(quality !== undefined ? { quality } : {}) }),
+  );
+}
+
 export function createRenderer(storage: StorageAdapter) {
   async function screenshotSnippet(
     html: string,
     sessionId: string,
-    onProgress?: (msg: string) => void,
+    options?: ScreenshotOptions,
   ): Promise<string> {
-    const imageId = uuidv4();
+    const viewport = options?.viewport ?? DEFAULT_VIEWPORT;
+    const ext = FORMAT_EXT[options?.format ?? 'png'];
+    const imageId = `${crypto.randomUUID()}.${ext}`;
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
-      await page.setViewport(VIEWPORT);
-      onProgress?.('Rendering HTML');
-      await page.setContent(wrapHtml(html), { waitUntil: 'load', timeout: TIMEOUT });
-      onProgress?.('Taking snapshot');
-      const buffer = await page.screenshot({ type: 'png', fullPage: false });
-      await storage.save(sessionId, imageId, Buffer.from(buffer));
+      await page.setViewport(viewport);
+      options?.onProgress?.('Rendering HTML');
+      await page.setContent(wrapHtml(html, viewport), { waitUntil: 'load', timeout: TIMEOUT });
+      options?.onProgress?.('Taking snapshot');
+      await storage.save(sessionId, imageId, await capture(page, options ?? {}));
     } finally {
       await page.close();
     }
@@ -119,18 +152,19 @@ export function createRenderer(storage: StorageAdapter) {
   async function screenshotUrl(
     url: string,
     sessionId: string,
-    onProgress?: (msg: string) => void,
+    options?: ScreenshotOptions,
   ): Promise<string> {
-    const imageId = uuidv4();
+    const viewport = options?.viewport ?? DEFAULT_VIEWPORT;
+    const ext = FORMAT_EXT[options?.format ?? 'png'];
+    const imageId = `${crypto.randomUUID()}.${ext}`;
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
-      await page.setViewport(VIEWPORT);
-      onProgress?.(`Loading ${url}`);
+      await page.setViewport(viewport);
+      options?.onProgress?.(`Loading ${url}`);
       await page.goto(url, { waitUntil: 'load', timeout: TIMEOUT });
-      onProgress?.('Taking snapshot');
-      const buffer = await page.screenshot({ type: 'png', fullPage: false });
-      await storage.save(sessionId, imageId, Buffer.from(buffer));
+      options?.onProgress?.('Taking snapshot');
+      await storage.save(sessionId, imageId, await capture(page, options ?? {}));
     } finally {
       await page.close();
     }

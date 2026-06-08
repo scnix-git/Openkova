@@ -1,6 +1,12 @@
 import { type NextRequest } from 'next/server';
-import { createSession, screenshotSnippet } from '@openkova/core';
-import { sseResponse } from '@/lib/sse';
+import { type OutputFormat, createSession, screenshotSnippet } from '@openkova/core';
+import { sseResponse, parseViewport } from '@/lib/sse';
+
+const VALID_FORMATS = new Set<OutputFormat>(['png', 'jpeg', 'webp', 'pdf']);
+
+function parseFormat(raw: unknown): OutputFormat {
+  return VALID_FORMATS.has(raw as OutputFormat) ? (raw as OutputFormat) : 'png';
+}
 
 export async function POST(req: NextRequest) {
   let formData: FormData;
@@ -23,6 +29,11 @@ export async function POST(req: NextRequest) {
       ? providedSessionId
       : createSession();
 
+  const rawViewport = formData.get('viewport');
+  const viewport = parseViewport(rawViewport ? JSON.parse(rawViewport as string) : null);
+  const fullPage = formData.get('fullPage') === 'true';
+  const format = parseFormat(formData.get('format'));
+
   return sseResponse(async (send) => {
     try {
       send({ type: 'progress', message: 'Launching virtual browser' });
@@ -32,7 +43,7 @@ export async function POST(req: NextRequest) {
         send({ type: 'progress', message: `Rendering ${file.name}` });
         const buffer = Buffer.from(await file.arrayBuffer());
         const html = buffer.toString('utf-8');
-        const imageId = await screenshotSnippet(html, sessionId);
+        const imageId = await screenshotSnippet(html, sessionId, { viewport, fullPage, format });
         results.push({ imageId, filename: file.name, url: `/api/image/${sessionId}/${imageId}` });
       }
 

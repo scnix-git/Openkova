@@ -1,18 +1,21 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { GalleryImage } from './ConverterTabs';
+import type { GalleryImage, OutputFormat, Viewport } from './ConverterTabs';
 import Terminal, { type LogLine } from './Terminal';
 import { parseSSEStream } from '@/lib/sse';
 
 interface Props {
   sessionId: string | null;
+  viewport: Viewport;
+  fullPage: boolean;
+  format: OutputFormat;
   onConversionComplete: (sessionId: string, images: GalleryImage[]) => void;
 }
 
 const PAGE_SIZE = 10;
 
-export default function UrlInput({ sessionId, onConversionComplete }: Props) {
+export default function UrlInput({ sessionId, viewport, fullPage, format, onConversionComplete }: Props) {
   const [url, setUrl] = useState('');
   const [depth, setDepth] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -68,7 +71,7 @@ export default function UrlInput({ sessionId, onConversionComplete }: Props) {
       const res = await fetch('/api/convert/url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: trimmed, sessionId, depth }),
+        body: JSON.stringify({ url: trimmed, sessionId, depth, viewport, fullPage, format }),
       });
 
       if (!res.ok) {
@@ -119,6 +122,9 @@ export default function UrlInput({ sessionId, onConversionComplete }: Props) {
           sessionId,
           offset: capturedCount,
           total: totalDiscovered,
+          viewport,
+          fullPage,
+          format,
         }),
       });
 

@@ -1,11 +1,16 @@
 import { type NextRequest } from 'next/server';
-import { createSession, screenshotUrl, crawlUrl } from '@openkova/core';
-import { sseResponse } from '@/lib/sse';
+import { type OutputFormat, createSession, screenshotUrl, crawlUrl } from '@openkova/core';
+import { sseResponse, parseViewport } from '@/lib/sse';
 
 const PAGE_SIZE = 10;
+const VALID_FORMATS = new Set<OutputFormat>(['png', 'jpeg', 'webp', 'pdf']);
 
 function resolveSessionId(raw: unknown): string {
   return typeof raw === 'string' && raw.length > 0 ? raw : createSession();
+}
+
+function parseFormat(raw: unknown): OutputFormat {
+  return VALID_FORMATS.has(raw as OutputFormat) ? (raw as OutputFormat) : 'png';
 }
 
 export async function POST(req: NextRequest) {
@@ -17,6 +22,9 @@ export async function POST(req: NextRequest) {
   }
 
   const raw = body as Record<string, unknown>;
+  const viewport = parseViewport(raw.viewport);
+  const fullPage = raw.fullPage === true;
+  const format = parseFormat(raw.format);
 
   // ── Direct mode: screenshot a pre-known list of URLs (pagination) ──────────
   if (Array.isArray(raw.urls)) {
@@ -37,7 +45,7 @@ export async function POST(req: NextRequest) {
         for (let i = 0; i < urls.length; i++) {
           const u = urls[i]!;
           send({ type: 'progress', message: `Capturing page ${offset + i + 1}/${total}: ${u}` });
-          const imageId = await screenshotUrl(u, sessionId);
+          const imageId = await screenshotUrl(u, sessionId, { viewport, fullPage, format });
           results.push({ imageId, url: u });
         }
 
@@ -91,7 +99,7 @@ export async function POST(req: NextRequest) {
       for (let i = 0; i < batch.length; i++) {
         const u = batch[i]!;
         send({ type: 'progress', message: `Capturing page ${i + 1}/${total}: ${u}` });
-        const imageId = await screenshotUrl(u, sessionId);
+        const imageId = await screenshotUrl(u, sessionId, { viewport, fullPage, format });
         results.push({ imageId, url: u });
       }
 

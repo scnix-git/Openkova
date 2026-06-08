@@ -16,7 +16,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   private filePath(sessionId: string, imageId: string): string {
-    return path.join(this.basePath, sessionId, `${imageId}.png`);
+    return path.join(this.basePath, sessionId, imageId);
   }
 
   private sessionDir(sessionId: string): string {
@@ -42,7 +42,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   async list(sessionId: string): Promise<string[]> {
     try {
       const entries = await fs.readdir(this.sessionDir(sessionId));
-      return entries.filter((e) => e.endsWith('.png')).map((e) => e.replace(/\.png$/, ''));
+      return entries.filter((e) => /\.(png|jpe?g|webp|pdf)$/i.test(e));
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
       throw err;

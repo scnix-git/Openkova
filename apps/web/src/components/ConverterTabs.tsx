@@ -7,11 +7,31 @@ import UrlInput from './UrlInput';
 import Gallery from './Gallery';
 
 type Tab = 'snippet' | 'files' | 'url';
+export type OutputFormat = 'png' | 'jpeg' | 'webp' | 'pdf';
 
 export interface GalleryImage {
   imageId: string;
   label: string;
 }
+
+export interface Viewport {
+  width: number;
+  height: number;
+  label: string;
+}
+
+const VIEWPORTS: Viewport[] = [
+  { label: 'Mobile', width: 390, height: 844 },
+  { label: 'Desktop', width: 1280, height: 800 },
+  { label: 'Wide', width: 1920, height: 1080 },
+];
+
+const FORMATS: { id: OutputFormat; label: string }[] = [
+  { id: 'png', label: 'PNG' },
+  { id: 'jpeg', label: 'JPEG' },
+  { id: 'webp', label: 'WebP' },
+  { id: 'pdf', label: 'PDF' },
+];
 
 interface Props {
   initialSessionId: string | null;
@@ -21,6 +41,9 @@ export default function ConverterTabs({ initialSessionId }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('snippet');
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId);
   const [images, setImages] = useState<GalleryImage[]>([]);
+  const [viewport, setViewport] = useState<Viewport>(VIEWPORTS[1]!);
+  const [fullPage, setFullPage] = useState(false);
+  const [format, setFormat] = useState<OutputFormat>('png');
 
   function handleConversionComplete(newSessionId: string, newImages: GalleryImage[]) {
     setSessionId(newSessionId);
@@ -35,28 +58,66 @@ export default function ConverterTabs({ initialSessionId }: Props) {
 
   return (
     <div>
-      <div className="converter-tabs__tablist" role="tablist">
-        {tabs.map((tab) => (
+      <div className="converter-tabs__toolbar">
+        <div className="converter-tabs__tablist" role="tablist">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              className={`converter-tabs__tab${activeTab === tab.id ? ' converter-tabs__tab--active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="converter-tabs__controls">
           <button
-            key={tab.id}
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            className={`converter-tabs__tab${activeTab === tab.id ? ' converter-tabs__tab--active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            className={`fullpage-btn${fullPage ? ' fullpage-btn--active' : ''}`}
+            onClick={() => setFullPage((p) => !p)}
+            title="Capture the full scrollable page height, not just the viewport"
           >
-            {tab.label}
+            Full page
           </button>
-        ))}
+
+          <div className="format-selector" role="group" aria-label="Output format">
+            {FORMATS.map((f) => (
+              <button
+                key={f.id}
+                className={`format-selector__btn${format === f.id ? ' format-selector__btn--active' : ''}`}
+                onClick={() => setFormat(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="viewport-selector" role="group" aria-label="Viewport size">
+            {VIEWPORTS.map((vp) => (
+              <button
+                key={vp.label}
+                className={`viewport-selector__btn${viewport.label === vp.label ? ' viewport-selector__btn--active' : ''}`}
+                onClick={() => setViewport(vp)}
+                title={`${vp.width} × ${vp.height}`}
+              >
+                {vp.label}
+                <span className="viewport-selector__dims">{vp.width}px</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {activeTab === 'snippet' && (
-        <SnippetInput sessionId={sessionId} onConversionComplete={handleConversionComplete} />
+        <SnippetInput sessionId={sessionId} viewport={viewport} fullPage={fullPage} format={format} onConversionComplete={handleConversionComplete} />
       )}
       {activeTab === 'files' && (
-        <FileInput sessionId={sessionId} onConversionComplete={handleConversionComplete} />
+        <FileInput sessionId={sessionId} viewport={viewport} fullPage={fullPage} format={format} onConversionComplete={handleConversionComplete} />
       )}
       {activeTab === 'url' && (
-        <UrlInput sessionId={sessionId} onConversionComplete={handleConversionComplete} />
+        <UrlInput sessionId={sessionId} viewport={viewport} fullPage={fullPage} format={format} onConversionComplete={handleConversionComplete} />
       )}
 
       {images.length > 0 && sessionId && (
