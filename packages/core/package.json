@@ -1,16 +1,18 @@
 {
   "name": "@openkova/core",
-  "version": "0.1.1",
-  "description": "HTML to PNG screenshot engine powered by Puppeteer. Render snippets, local HTML files, or live URLs to images.",
+  "version": "0.1.2",
+  "description": "HTML to image/PDF engine powered by Puppeteer. Render snippets, local HTML files, or live URLs to PNG, JPEG, WebP, or PDF — with configurable viewport, full-page capture, and pluggable storage.",
   "keywords": [
     "html-to-image",
     "html-to-png",
+    "html-to-pdf",
     "screenshot",
     "puppeteer",
     "headless-chrome",
     "html-screenshot",
     "webpage-screenshot",
-    "url-to-image"
+    "url-to-image",
+    "pdf-generator"
   ],
   "license": "MIT",
   "repository": {
