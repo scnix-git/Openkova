@@ -17,7 +17,7 @@ export async function GET(
   for (const imageId of imageIds) {
     const data = await storage.get(sessionId, imageId);
     if (data) {
-      files[`${imageId}.png`] = new Uint8Array(data);
+      files[imageId] = new Uint8Array(data);
     }
   }
 
