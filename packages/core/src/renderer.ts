@@ -1,5 +1,6 @@
-import puppeteer, { type Browser, type LaunchOptions } from 'puppeteer-core';
+import puppeteer, { type Browser, type LaunchOptions, type Page } from 'puppeteer-core';
 import { LocalStorageAdapter, type StorageAdapter } from './storage.js';
+import { isSafeHost } from './crawler.js';
 
 const DEFAULT_VIEWPORT = { width: 1280, height: 800 };
 const TIMEOUT = 30_000;
@@ -18,13 +19,11 @@ let launchOptionsCache: LaunchOptions | null = null;
 async function getLaunchOptions(): Promise<LaunchOptions> {
   if (launchOptionsCache) return launchOptionsCache;
 
-  // Explicit path via env var (Docker / CI / Railway sets CHROMIUM_PATH)
   if (process.env.CHROMIUM_PATH) {
     launchOptionsCache = { executablePath: process.env.CHROMIUM_PATH, args: ARGS, headless: true };
     return launchOptionsCache;
   }
 
-  // Local dev: puppeteer devDependency bundles its own Chrome
   try {
     const { executablePath } = await import('puppeteer');
     launchOptionsCache = { executablePath: await executablePath(), args: ARGS, headless: true };
@@ -33,8 +32,8 @@ async function getLaunchOptions(): Promise<LaunchOptions> {
     // not installed, fall through
   }
 
-  // Fallback: common system Chrome paths
-  const { existsSync } = await import('fs');
+  // Async existence check to avoid blocking the event loop
+  const { access } = await import('node:fs/promises');
   const systemPaths =
     process.platform === 'darwin'
       ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome']
@@ -46,39 +45,70 @@ async function getLaunchOptions(): Promise<LaunchOptions> {
             '/usr/bin/chromium-browser',
             '/usr/bin/chromium',
           ];
-  launchOptionsCache = { executablePath: systemPaths.find((p) => existsSync(p)), args: ARGS, headless: true };
+
+  let executablePath: string | undefined;
+  for (const p of systemPaths) {
+    try { await access(p); executablePath = p; break; } catch {}
+  }
+
+  if (executablePath === undefined) {
+    throw new Error(
+      '@openkova/core: No Chromium/Chrome executable found. ' +
+      'Set CHROMIUM_PATH, install the "puppeteer" npm package, or install Chrome/Chromium system-wide.',
+    );
+  }
+
+  launchOptionsCache = { executablePath, args: ARGS, headless: true };
   return launchOptionsCache;
 }
 
+// Single shared browser promise — re-checked after every await to prevent
+// duplicate launches when concurrent requests arrive simultaneously.
 let browserPromise: Promise<Browser> | null = null;
 
 async function getBrowser(): Promise<Browser> {
-  if (browserPromise) {
-    const b = await browserPromise;
-    if (b.connected) return b;
+  let current = browserPromise;
+  if (current) {
+    try {
+      const b = await current;
+      if (b.connected) return b;
+    } catch {}
     browserPromise = null;
   }
+
   const options = await getLaunchOptions();
-  browserPromise = puppeteer.launch(options);
-  const b = await browserPromise;
-  b.on('disconnected', () => {
+
+  // Re-check after the await — a concurrent call may have already launched.
+  current = browserPromise;
+  if (current) {
+    try {
+      const b = await current;
+      if (b.connected) return b;
+    } catch {}
     browserPromise = null;
+  }
+
+  browserPromise = puppeteer.launch(options).then((b) => {
+    b.on('disconnected', () => { browserPromise = null; });
+    return b;
   });
-  return b;
+
+  return browserPromise;
 }
 
+/** Close the shared browser instance. Called on graceful shutdown. */
 export async function closeBrowser(): Promise<void> {
   if (browserPromise) {
-    const b = await browserPromise;
-    await b.close();
+    try {
+      const b = await browserPromise;
+      await b.close();
+    } catch {}
     browserPromise = null;
   }
 }
 
 process.on('exit', () => {
-  if (browserPromise) {
-    browserPromise.then((b) => b.close()).catch(() => undefined);
-  }
+  if (browserPromise) browserPromise.then((b) => b.close()).catch(() => undefined);
 });
 
 export type OutputFormat = 'png' | 'jpeg' | 'webp' | 'pdf';
@@ -98,6 +128,7 @@ export interface Viewport {
 export interface ScreenshotOptions {
   viewport?: Viewport;
   fullPage?: boolean;
+  /** Output file format. Defaults to `'png'`. */
   format?: OutputFormat;
   onProgress?: (msg: string) => void;
 }
@@ -114,11 +145,17 @@ function wrapHtml(html: string, viewport: Viewport): string {
 </html>`;
 }
 
-async function capture(page: import('puppeteer-core').Page, options: ScreenshotOptions): Promise<Buffer> {
+async function capture(page: Page, options: ScreenshotOptions): Promise<Buffer> {
   const format = options.format ?? 'png';
   const fullPage = options.fullPage ?? false;
   if (format === 'pdf') {
-    return Buffer.from(await page.pdf({ printBackground: true }));
+    const vp = options.viewport ?? DEFAULT_VIEWPORT;
+    // When fullPage is false, constrain the PDF to viewport dimensions.
+    // When fullPage is true, let puppeteer render the full scrollable document.
+    const pdfOptions = fullPage
+      ? { printBackground: true }
+      : { printBackground: true, width: `${vp.width}px`, height: `${vp.height}px` };
+    return Buffer.from(await page.pdf(pdfOptions));
   }
   const quality = format === 'png' ? undefined : 85;
   return Buffer.from(
@@ -127,6 +164,10 @@ async function capture(page: import('puppeteer-core').Page, options: ScreenshotO
 }
 
 export function createRenderer(storage: StorageAdapter) {
+  /**
+   * Render an HTML string in a headless browser and save the result.
+   * Returns the imageId (includes file extension, e.g. `"abc123.jpg"`).
+   */
   async function screenshotSnippet(
     html: string,
     sessionId: string,
@@ -149,11 +190,24 @@ export function createRenderer(storage: StorageAdapter) {
     return imageId;
   }
 
+  /**
+   * Navigate to a URL in a headless browser and save the result.
+   * Returns the imageId (includes file extension, e.g. `"abc123.png"`).
+   *
+   * @throws If `url` is not http/https or targets a private/loopback host.
+   */
   async function screenshotUrl(
     url: string,
     sessionId: string,
     options?: ScreenshotOptions,
   ): Promise<string> {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error(`@openkova/core: URL must use http or https: ${url}`);
+    }
+    if (!isSafeHost(parsed.hostname)) {
+      throw new Error(`@openkova/core: URL targets a private network: ${parsed.hostname}`);
+    }
     const viewport = options?.viewport ?? DEFAULT_VIEWPORT;
     const ext = FORMAT_EXT[options?.format ?? 'png'];
     const imageId = `${crypto.randomUUID()}.${ext}`;
