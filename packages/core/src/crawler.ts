@@ -6,7 +6,7 @@ const PRIVATE_HOST_RE = /^(localhost|.*\.local)$/i;
 const PRIVATE_IP_RE =
   /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|0\.|::1$|fc[\da-f]{2}:|fe80:)/i;
 
-function isSafeHost(hostname: string): boolean {
+export function isSafeHost(hostname: string): boolean {
   return !PRIVATE_HOST_RE.test(hostname) && !PRIVATE_IP_RE.test(hostname);
 }
 
@@ -45,8 +45,22 @@ export async function crawlUrl(
     return results;
   }
 
-  const links = extractSameOriginLinks(html, rootUrl, origin, seen);
-  results.push(...links);
+  const firstLevel = extractSameOriginLinks(html, rootUrl, origin, seen);
+  results.push(...firstLevel);
+
+  if (depth >= 2) {
+    for (const link of firstLevel) {
+      onProgress?.(`Fetching ${link}`);
+      try {
+        const res = await fetch(link, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
+        const subHtml = await res.text();
+        const subLinks = extractSameOriginLinks(subHtml, link, origin, seen);
+        results.push(...subLinks);
+      } catch {
+        // skip unreachable pages
+      }
+    }
+  }
 
   const total = results.length;
   onProgress?.(`Found ${total} page${total !== 1 ? 's' : ''} to capture`);

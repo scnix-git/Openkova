@@ -62,7 +62,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   async list(sessionId: string): Promise<string[]> {
     try {
       const entries = await fs.readdir(this.sessionDir(sessionId));
-      return entries.filter((e) => /\.(png|jpe?g|webp|pdf)$/i.test(e));
+      return entries.filter((e) => SAFE_IMAGE_ID_RE.test(e));
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
       throw err;

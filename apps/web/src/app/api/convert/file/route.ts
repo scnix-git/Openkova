@@ -37,7 +37,15 @@ export async function POST(req: NextRequest) {
       : createSession();
 
   const rawViewport = formData.get('viewport');
-  const viewport = parseViewport(rawViewport ? JSON.parse(rawViewport as string) : null);
+  let parsedViewport: unknown = null;
+  if (rawViewport) {
+    try {
+      parsedViewport = JSON.parse(rawViewport as string);
+    } catch {
+      return Response.json({ error: 'Invalid viewport JSON' }, { status: 400 });
+    }
+  }
+  const viewport = parseViewport(parsedViewport);
   const fullPage = formData.get('fullPage') === 'true';
   const format = parseFormat(formData.get('format'));
 

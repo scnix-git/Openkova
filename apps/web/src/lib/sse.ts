@@ -38,10 +38,16 @@ export function sseResponse(
   });
 
   const send = (event: SSEEvent) => {
-    ctrl.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+    try {
+      ctrl.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+    } catch {
+      // controller already closed — drop the event
+    }
   };
 
-  fn(send).finally(() => ctrl.close());
+  fn(send)
+    .catch(() => send({ type: 'error', message: 'Internal server error' }))
+    .finally(() => ctrl.close());
 
   return new Response(stream, {
     headers: {

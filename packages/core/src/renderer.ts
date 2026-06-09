@@ -1,5 +1,6 @@
 import puppeteer, { type Browser, type LaunchOptions, type Page } from 'puppeteer-core';
 import { LocalStorageAdapter, type StorageAdapter } from './storage.js';
+import { isSafeHost } from './crawler.js';
 
 const DEFAULT_VIEWPORT = { width: 1280, height: 800 };
 const TIMEOUT = 30_000;
@@ -48,6 +49,13 @@ async function getLaunchOptions(): Promise<LaunchOptions> {
   let executablePath: string | undefined;
   for (const p of systemPaths) {
     try { await access(p); executablePath = p; break; } catch {}
+  }
+
+  if (executablePath === undefined) {
+    throw new Error(
+      'No Chromium/Chrome executable found. ' +
+      'Set CHROMIUM_PATH, install the "puppeteer" npm package, or install Chrome/Chromium system-wide.',
+    );
   }
 
   launchOptionsCache = { executablePath, args: ARGS, headless: true };
@@ -141,7 +149,13 @@ async function capture(page: Page, options: ScreenshotOptions): Promise<Buffer> 
   const format = options.format ?? 'png';
   const fullPage = options.fullPage ?? false;
   if (format === 'pdf') {
-    return Buffer.from(await page.pdf({ printBackground: true }));
+    const vp = options.viewport ?? DEFAULT_VIEWPORT;
+    // When fullPage is false, constrain the PDF to viewport dimensions.
+    // When fullPage is true, let puppeteer render the full scrollable document.
+    const pdfOptions = fullPage
+      ? { printBackground: true }
+      : { printBackground: true, width: `${vp.width}px`, height: `${vp.height}px` };
+    return Buffer.from(await page.pdf(pdfOptions));
   }
   const quality = format === 'png' ? undefined : 85;
   return Buffer.from(
@@ -185,6 +199,13 @@ export function createRenderer(storage: StorageAdapter) {
     sessionId: string,
     options?: ScreenshotOptions,
   ): Promise<string> {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error(`URL must use http or https: ${url}`);
+    }
+    if (!isSafeHost(parsed.hostname)) {
+      throw new Error(`URL targets a private network: ${parsed.hostname}`);
+    }
     const viewport = options?.viewport ?? DEFAULT_VIEWPORT;
     const ext = FORMAT_EXT[options?.format ?? 'png'];
     const imageId = `${crypto.randomUUID()}.${ext}`;

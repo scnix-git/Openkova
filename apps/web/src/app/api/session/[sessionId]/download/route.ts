@@ -8,7 +8,13 @@ export async function GET(
 ) {
   const { sessionId } = await params;
 
-  const imageIds = await storage.list(sessionId);
+  let imageIds: string[];
+  try {
+    imageIds = await storage.list(sessionId);
+  } catch {
+    return NextResponse.json({ error: 'Invalid session' }, { status: 400 });
+  }
+
   if (imageIds.length === 0) {
     return NextResponse.json({ error: 'No images found for this session' }, { status: 404 });
   }

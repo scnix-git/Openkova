@@ -14,7 +14,12 @@ export async function GET(
   { params }: { params: Promise<{ sessionId: string; id: string }> },
 ) {
   const { sessionId, id } = await params;
-  const data = await storage.get(sessionId, id);
+  let data: Buffer | null;
+  try {
+    data = await storage.get(sessionId, id);
+  } catch {
+    return new NextResponse(null, { status: 400 });
+  }
 
   if (!data) {
     return new NextResponse(null, { status: 404 });
