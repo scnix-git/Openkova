@@ -117,9 +117,15 @@ Returns the `imageId` string (includes extension, e.g. `"abc123.jpg"`).
 
 Navigates to a live URL and renders it. Accepts the same options as `screenshotSnippet`.
 
+Throws if `url` does not use `http`/`https` or if the host resolves to a private/loopback address (SSRF protection).
+
 ### `crawlUrl(rootUrl, depth?, onProgress?)`
 
-Fetches `rootUrl`, extracts same-origin `<a href>` links, and returns the full list of URLs to capture. `depth` can be `1` (root + its links) or `2` (follow links one level further).
+Fetches `rootUrl`, extracts same-origin `<a href>` links, and returns the full list of URLs to capture. `depth` can be `1` (root + its links) or `2` (follow links one level further). Results are capped at `MAX_CRAWL_URLS` (200) regardless of depth.
+
+### `MAX_CRAWL_URLS`
+
+Exported constant (`200`). The maximum number of URLs `crawlUrl` will return in a single call.
 
 ### `createSession()`
 
@@ -144,6 +150,10 @@ Returns `{ screenshotSnippet, screenshotUrl }` bound to a custom storage adapter
 |---|---|---|
 | `CHROMIUM_PATH` | auto-detected | Path to Chrome/Chromium binary |
 | `OPENKOVA_STORAGE_PATH` | `./data` | Root directory for saved files |
+
+## Changelog
+
+See [openkova.dev/changelog](https://www.openkova.dev/changelog) for the full release history.
 
 ## License
 

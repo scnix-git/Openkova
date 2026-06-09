@@ -32,7 +32,7 @@ See [`packages/core/README.md`](packages/core/README.md) for the full API refere
 
 - **HTML Snippet** — paste raw HTML and screenshot it at any viewport size
 - **File upload** — upload one or more `.html` files, each rendered separately
-- **URL crawl** — screenshot a live site and same-origin linked pages, 10 at a time
+- **URL crawl** — screenshot a live site and same-origin linked pages, 10 at a time (up to 200 pages per crawl)
 - **Output formats** — PNG, JPEG, WebP, or PDF
 - **Full-page capture** — capture the full scrollable height, not just the viewport
 - **Viewport selection** — Mobile (390px), Desktop (1280px), or Wide (1920px)
