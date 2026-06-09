@@ -151,6 +151,10 @@ Returns `{ screenshotSnippet, screenshotUrl }` bound to a custom storage adapter
 | `CHROMIUM_PATH` | auto-detected | Path to Chrome/Chromium binary |
 | `OPENKOVA_STORAGE_PATH` | `./data` | Root directory for saved files |
 
+## Changelog
+
+See [openkova.dev/changelog](https://www.openkova.dev/changelog) for the full release history.
+
 ## License
 
 MIT
