@@ -8,17 +8,38 @@ export async function GET(
 ) {
   const { sessionId } = await params;
 
-  const imageIds = await storage.list(sessionId);
+  let imageIds: string[];
+  try {
+    imageIds = await storage.list(sessionId);
+  } catch {
+    return NextResponse.json({ error: 'Invalid session' }, { status: 400 });
+  }
+
   if (imageIds.length === 0) {
     return NextResponse.json({ error: 'No images found for this session' }, { status: 404 });
   }
 
   const files: Record<string, Uint8Array> = {};
+  const errors: string[] = [];
   for (const imageId of imageIds) {
-    const data = await storage.get(sessionId, imageId);
-    if (data) {
-      files[imageId] = new Uint8Array(data);
+    try {
+      const data = await storage.get(sessionId, imageId);
+      if (data) {
+        files[imageId] = new Uint8Array(data);
+      }
+    } catch {
+      errors.push(imageId);
     }
+  }
+
+  if (Object.keys(files).length === 0) {
+    return NextResponse.json({ error: 'Failed to read images for this session' }, { status: 500 });
+  }
+
+  if (errors.length > 0) {
+    files['ERRORS.txt'] = new TextEncoder().encode(
+      `The following files could not be read:\n${errors.join('\n')}\n`,
+    );
   }
 
   const zipped = zipSync(files, { level: 0 });

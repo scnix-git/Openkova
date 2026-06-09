@@ -1,16 +1,17 @@
 import { type NextRequest } from 'next/server';
-import { type OutputFormat, createSession, screenshotUrl, crawlUrl } from '@openkova/core';
-import { sseResponse, parseViewport } from '@/lib/sse';
+import { screenshotUrl, crawlUrl, isSafeHost } from '@openkova/core';
+import { sseResponse } from '@/lib/sse';
+import { parseFormat, parseViewport, resolveSessionId } from '@/lib/parse';
+import { PAGE_SIZE } from '@/lib/config';
 
-const PAGE_SIZE = 10;
-const VALID_FORMATS = new Set<OutputFormat>(['png', 'jpeg', 'webp', 'pdf']);
+const MAX_DIRECT_URLS = PAGE_SIZE;
 
-function resolveSessionId(raw: unknown): string {
-  return typeof raw === 'string' && raw.length > 0 ? raw : createSession();
-}
-
-function parseFormat(raw: unknown): OutputFormat {
-  return VALID_FORMATS.has(raw as OutputFormat) ? (raw as OutputFormat) : 'png';
+function isSafeUrl(url: string): boolean {
+  try {
+    return isSafeHost(new URL(url).hostname);
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -32,10 +33,30 @@ export async function POST(req: NextRequest) {
     if (urls.length === 0) {
       return Response.json({ error: 'urls must be a non-empty array of strings' }, { status: 400 });
     }
+    if (urls.length > MAX_DIRECT_URLS) {
+      return Response.json({ error: `Too many URLs per request (max ${MAX_DIRECT_URLS})` }, { status: 400 });
+    }
+
+    const badProtocol = urls.find((u) => {
+      try {
+        const { protocol } = new URL(u);
+        return protocol !== 'http:' && protocol !== 'https:';
+      } catch {
+        return true;
+      }
+    });
+    if (badProtocol) {
+      return Response.json({ error: 'url must use http or https' }, { status: 400 });
+    }
+
+    const blocked = urls.find((u) => !isSafeUrl(u));
+    if (blocked) {
+      return Response.json({ error: `URL targets a private network: ${blocked}` }, { status: 400 });
+    }
 
     const sessionId = resolveSessionId(raw.sessionId);
-    const offset = typeof raw.offset === 'number' ? raw.offset : 0;
-    const total = typeof raw.total === 'number' ? raw.total : urls.length + offset;
+    const offset = typeof raw.offset === 'number' && raw.offset >= 0 ? raw.offset : 0;
+    const total = typeof raw.total === 'number' && raw.total > 0 ? raw.total : null;
 
     return sseResponse(async (send) => {
       try {
@@ -44,18 +65,21 @@ export async function POST(req: NextRequest) {
 
         for (let i = 0; i < urls.length; i++) {
           const u = urls[i]!;
-          send({ type: 'progress', message: `Capturing page ${offset + i + 1}/${total}: ${u}` });
+          const pageNum = total !== null ? `${offset + i + 1}/${total}` : `${offset + i + 1}`;
+          send({ type: 'progress', message: `Capturing page ${pageNum}: ${u}` });
           const imageId = await screenshotUrl(u, sessionId, { viewport, fullPage, format });
           results.push({ imageId, url: u });
         }
 
         const captured = offset + results.length;
         const doneMsg =
-          captured >= total
-            ? `Done — all ${total} page${total !== 1 ? 's' : ''} captured`
-            : `Captured ${captured} of ${total} pages`;
+          total !== null
+            ? captured >= total
+              ? `Done — all ${total} page${total !== 1 ? 's' : ''} captured`
+              : `Captured ${captured} of ${total} pages`
+            : `Captured ${results.length} page${results.length !== 1 ? 's' : ''}`;
 
-        send({ type: 'done', message: doneMsg, data: { sessionId, results, total } });
+        send({ type: 'done', message: doneMsg, data: { sessionId, results, total: total ?? captured } });
       } catch (err) {
         console.error('[convert/url]', err);
         send({ type: 'error', message: 'Conversion failed' });
@@ -74,10 +98,19 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'url must be a non-empty string' }, { status: 400 });
   }
 
+  let parsedUrl: URL;
   try {
-    new URL(url);
+    parsedUrl = new URL(url);
   } catch {
     return Response.json({ error: 'url is not a valid URL' }, { status: 400 });
+  }
+
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    return Response.json({ error: 'url must use http or https' }, { status: 400 });
+  }
+
+  if (!isSafeHost(parsedUrl.hostname)) {
+    return Response.json({ error: 'URL targets a private network' }, { status: 400 });
   }
 
   const crawlDepth = typeof depth === 'number' && depth >= 1 && depth <= 2 ? Math.floor(depth) : 1;

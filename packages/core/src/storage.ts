@@ -8,6 +8,23 @@ export interface StorageAdapter {
   delete(sessionId: string, imageId: string): Promise<void>;
 }
 
+// Prevents path traversal: imageId must be a UUID with a known extension,
+// sessionId must be a UUID.
+const SAFE_IMAGE_ID_RE = /^[a-f0-9-]{36}\.(png|jpe?g|webp|pdf)$/i;
+const SAFE_SESSION_ID_RE = /^[a-f0-9-]{36}$/i;
+
+function assertSafeImageId(imageId: string): void {
+  if (!SAFE_IMAGE_ID_RE.test(imageId)) {
+    throw new Error(`Invalid imageId: ${JSON.stringify(imageId)}`);
+  }
+}
+
+function assertSafeSessionId(sessionId: string): void {
+  if (!SAFE_SESSION_ID_RE.test(sessionId)) {
+    throw new Error(`Invalid sessionId: ${JSON.stringify(sessionId)}`);
+  }
+}
+
 export class LocalStorageAdapter implements StorageAdapter {
   private readonly basePath: string;
 
@@ -16,10 +33,13 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   private filePath(sessionId: string, imageId: string): string {
+    assertSafeSessionId(sessionId);
+    assertSafeImageId(imageId);
     return path.join(this.basePath, sessionId, imageId);
   }
 
   private sessionDir(sessionId: string): string {
+    assertSafeSessionId(sessionId);
     return path.join(this.basePath, sessionId);
   }
 
@@ -42,7 +62,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   async list(sessionId: string): Promise<string[]> {
     try {
       const entries = await fs.readdir(this.sessionDir(sessionId));
-      return entries.filter((e) => /\.(png|jpe?g|webp|pdf)$/i.test(e));
+      return entries.filter((e) => SAFE_IMAGE_ID_RE.test(e));
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
       throw err;
@@ -55,20 +75,30 @@ export class LocalStorageAdapter implements StorageAdapter {
 
   async cleanup(maxAgeMs: number): Promise<number> {
     let deleted = 0;
+    let sessions: string[];
     try {
-      const sessions = await fs.readdir(this.basePath);
-      const cutoff = Date.now() - maxAgeMs;
-      for (const sessionId of sessions) {
-        const dir = this.sessionDir(sessionId);
-        try {
-          const stat = await fs.stat(dir);
-          if (stat.mtimeMs < cutoff) {
-            await fs.rm(dir, { recursive: true });
-            deleted++;
-          }
-        } catch {}
+      sessions = await fs.readdir(this.basePath);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        console.error('[storage] cleanup: failed to read base directory', err);
       }
-    } catch {}
+      return 0;
+    }
+
+    const cutoff = Date.now() - maxAgeMs;
+    for (const sessionId of sessions) {
+      if (!SAFE_SESSION_ID_RE.test(sessionId)) continue;
+      const dir = path.join(this.basePath, sessionId);
+      try {
+        const stat = await fs.stat(dir);
+        if (stat.mtimeMs < cutoff) {
+          await fs.rm(dir, { recursive: true });
+          deleted++;
+        }
+      } catch (err) {
+        console.error('[storage] cleanup: failed to process session', sessionId, err);
+      }
+    }
     return deleted;
   }
 }

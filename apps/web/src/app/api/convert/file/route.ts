@@ -1,12 +1,8 @@
 import { type NextRequest } from 'next/server';
-import { type OutputFormat, createSession, screenshotSnippet } from '@openkova/core';
-import { sseResponse, parseViewport } from '@/lib/sse';
-
-const VALID_FORMATS = new Set<OutputFormat>(['png', 'jpeg', 'webp', 'pdf']);
-
-function parseFormat(raw: unknown): OutputFormat {
-  return VALID_FORMATS.has(raw as OutputFormat) ? (raw as OutputFormat) : 'png';
-}
+import { screenshotSnippet } from '@openkova/core';
+import { sseResponse } from '@/lib/sse';
+import { parseFormat, parseViewport, resolveSessionId } from '@/lib/parse';
+import { MAX_FILES, MAX_FILE_SIZE } from '@/lib/config';
 
 export async function POST(req: NextRequest) {
   let formData: FormData;
@@ -23,14 +19,27 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'No HTML files provided' }, { status: 400 });
   }
 
-  const providedSessionId = formData.get('sessionId');
-  const sessionId =
-    typeof providedSessionId === 'string' && providedSessionId.length > 0
-      ? providedSessionId
-      : createSession();
+  if (files.length > MAX_FILES) {
+    return Response.json({ error: `Too many files (max ${MAX_FILES})` }, { status: 400 });
+  }
+
+  const oversized = files.find((f) => f.size > MAX_FILE_SIZE);
+  if (oversized) {
+    return Response.json({ error: `File "${oversized.name}" exceeds 10 MB limit` }, { status: 413 });
+  }
+
+  const sessionId = resolveSessionId(formData.get('sessionId'));
 
   const rawViewport = formData.get('viewport');
-  const viewport = parseViewport(rawViewport ? JSON.parse(rawViewport as string) : null);
+  let parsedViewport: unknown = null;
+  if (rawViewport) {
+    try {
+      parsedViewport = JSON.parse(rawViewport as string);
+    } catch {
+      return Response.json({ error: 'Invalid viewport JSON' }, { status: 400 });
+    }
+  }
+  const viewport = parseViewport(parsedViewport);
   const fullPage = formData.get('fullPage') === 'true';
   const format = parseFormat(formData.get('format'));
 

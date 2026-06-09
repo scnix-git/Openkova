@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { GalleryImage, OutputFormat, Viewport } from './ConverterTabs';
-import Terminal, { type LogLine } from './Terminal';
-import { parseSSEStream } from '@/lib/sse';
+import Terminal from './Terminal';
+import { useSSEStream } from '@/hooks/useSSEStream';
 
 interface Props {
   sessionId: string | null;
@@ -15,8 +15,7 @@ interface Props {
 
 export default function FileInput({ sessionId, viewport, fullPage, format, onConversionComplete }: Props) {
   const [files, setFiles] = useState<File[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [lines, setLines] = useState<LogLine[]>([]);
+  const { lines, loading, setLoading, addLine, reset, runStream } = useSSEStream();
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
@@ -24,11 +23,7 @@ export default function FileInput({ sessionId, viewport, fullPage, format, onCon
     if (!loading && lines.length > 0) {
       terminalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [loading]);
-
-  function addLine(line: LogLine) {
-    setLines((prev) => [...prev, line]);
-  }
+  }, [loading, lines.length]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     setFiles(Array.from(e.target.files ?? []));
@@ -37,10 +32,8 @@ export default function FileInput({ sessionId, viewport, fullPage, format, onCon
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (files.length === 0) return;
-
     setLoading(true);
-    setLines([]);
-
+    reset();
     try {
       const formData = new FormData();
       for (const file of files) formData.append('files', file);
@@ -50,46 +43,20 @@ export default function FileInput({ sessionId, viewport, fullPage, format, onCon
       formData.append('format', format);
 
       const res = await fetch('/api/convert/file', { method: 'POST', body: formData });
-
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         let message = `Server error ${res.status}`;
-        try {
-          const data = (await res.json()) as { error?: string };
-          if (data.error) message = data.error;
-        } catch {}
+        try { const d = (await res.json()) as { error?: string }; if (d.error) message = d.error; } catch {}
         addLine({ message, status: 'error' });
         return;
       }
-
-      let gotDone = false;
-      for await (const event of parseSSEStream(res.body)) {
-        if (event.type === 'progress') {
-          addLine({ message: event.message, status: 'progress' });
-        } else if (event.type === 'done') {
-          gotDone = true;
-          addLine({ message: event.message, status: 'done' });
-          const data = event.data as {
-            sessionId: string;
-            results: { imageId: string; filename: string }[];
-          };
-          const images: GalleryImage[] = data.results.map((r) => ({
-            imageId: r.imageId,
-            label: r.filename,
-          }));
-          onConversionComplete(data.sessionId, images);
-          setFiles([]);
-          if (inputRef.current) inputRef.current.value = '';
-        } else if (event.type === 'error') {
-          addLine({ message: event.message, status: 'error' });
-          return;
-        }
-      }
-      if (!gotDone) addLine({ message: 'Conversion failed unexpectedly', status: 'error' });
-    } catch (err) {
-      addLine({
-        message: err instanceof Error ? err.message : 'Conversion failed',
-        status: 'error',
+      await runStream(res, (data) => {
+        const d = data as { sessionId: string; results: { imageId: string; filename: string }[] };
+        onConversionComplete(d.sessionId, d.results.map((r) => ({ imageId: r.imageId, label: r.filename })));
+        setFiles([]);
+        if (inputRef.current) inputRef.current.value = '';
       });
+    } catch (err) {
+      addLine({ message: err instanceof Error ? err.message : 'Conversion failed', status: 'error' });
     } finally {
       setLoading(false);
     }
@@ -106,13 +73,7 @@ export default function FileInput({ sessionId, viewport, fullPage, format, onCon
           role="button"
           tabIndex={0}
         >
-          <input
-            ref={inputRef}
-            type="file"
-            multiple
-            accept=".html,.htm"
-            onChange={handleFileChange}
-          />
+          <input ref={inputRef} type="file" multiple accept=".html,.htm" onChange={handleFileChange} />
           <div>Click to select files</div>
           <div className="converter-input__file-hint">.html and .htm files only</div>
         </div>
@@ -131,9 +92,7 @@ export default function FileInput({ sessionId, viewport, fullPage, format, onCon
       <div className="converter-input__actions">
         <button type="submit" className="btn btn--primary" disabled={loading || files.length === 0}>
           {loading ? (
-            <>
-              <span className="spinner" /> Converting…
-            </>
+            <><span className="spinner" /> Converting…</>
           ) : (
             `Convert ${files.length > 0 ? files.length : ''} File${files.length !== 1 ? 's' : ''}`
           )}

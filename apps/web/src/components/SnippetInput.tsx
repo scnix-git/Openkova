@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type { GalleryImage, OutputFormat, Viewport } from './ConverterTabs';
-import Terminal, { type LogLine } from './Terminal';
-import { parseSSEStream } from '@/lib/sse';
+import Terminal from './Terminal';
+import { useSSEStream } from '@/hooks/useSSEStream';
+import { useState } from 'react';
 
 interface Props {
   sessionId: string | null;
@@ -18,65 +19,39 @@ const PLACEHOLDER = `<h1 style="font-family: sans-serif; color: #7c6af7;">Hello,
 
 export default function SnippetInput({ sessionId, viewport, fullPage, format, onConversionComplete }: Props) {
   const [html, setHtml] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [lines, setLines] = useState<LogLine[]>([]);
+  const { lines, loading, setLoading, addLine, reset, runStream } = useSSEStream();
   const terminalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!loading && lines.length > 0) {
       terminalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [loading]);
-
-  function addLine(line: LogLine) {
-    setLines((prev) => [...prev, line]);
-  }
+  }, [loading, lines.length]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = html.trim();
     if (!trimmed) return;
-
     setLoading(true);
-    setLines([]);
-
+    reset();
     try {
       const res = await fetch('/api/convert/snippet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ html: trimmed, sessionId, viewport, fullPage, format }),
       });
-
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         let message = `Server error ${res.status}`;
-        try {
-          const data = (await res.json()) as { error?: string };
-          if (data.error) message = data.error;
-        } catch {}
+        try { const d = (await res.json()) as { error?: string }; if (d.error) message = d.error; } catch {}
         addLine({ message, status: 'error' });
         return;
       }
-
-      let gotDone = false;
-      for await (const event of parseSSEStream(res.body)) {
-        if (event.type === 'progress') {
-          addLine({ message: event.message, status: 'progress' });
-        } else if (event.type === 'done') {
-          gotDone = true;
-          addLine({ message: event.message, status: 'done' });
-          const data = event.data as { sessionId: string; imageId: string };
-          onConversionComplete(data.sessionId, [{ imageId: data.imageId, label: 'snippet' }]);
-        } else if (event.type === 'error') {
-          addLine({ message: event.message, status: 'error' });
-          return;
-        }
-      }
-      if (!gotDone) addLine({ message: 'Conversion failed unexpectedly', status: 'error' });
-    } catch (err) {
-      addLine({
-        message: err instanceof Error ? err.message : 'Conversion failed',
-        status: 'error',
+      await runStream(res, (data) => {
+        const d = data as { sessionId: string; imageId: string };
+        onConversionComplete(d.sessionId, [{ imageId: d.imageId, label: 'snippet' }]);
       });
+    } catch (err) {
+      addLine({ message: err instanceof Error ? err.message : 'Conversion failed', status: 'error' });
     } finally {
       setLoading(false);
     }
@@ -104,13 +79,7 @@ export default function SnippetInput({ sessionId, viewport, fullPage, format, on
 
       <div className="converter-input__actions">
         <button type="submit" className="btn btn--primary" disabled={loading || !html.trim()}>
-          {loading ? (
-            <>
-              <span className="spinner" /> Converting…
-            </>
-          ) : (
-            'Convert to Image'
-          )}
+          {loading ? <><span className="spinner" /> Converting…</> : 'Convert to Image'}
         </button>
       </div>
     </form>

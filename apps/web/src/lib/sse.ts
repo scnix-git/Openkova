@@ -1,27 +1,10 @@
-export interface Viewport {
-  width: number;
-  height: number;
-}
-
-export function parseViewport(raw: unknown): Viewport | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
-  const { width, height } = raw as Record<string, unknown>;
-  if (
-    typeof width === 'number' && typeof height === 'number' &&
-    Number.isInteger(width) && Number.isInteger(height) &&
-    width >= 320 && width <= 3840 && height >= 240 && height <= 2160
-  ) {
-    return { width, height };
-  }
-  return undefined;
-}
-
 export type SSEEvent =
   | { type: 'progress'; message: string }
   | { type: 'done'; message: string; data: Record<string, unknown> }
   | { type: 'error'; message: string };
 
-const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
+// Cookie TTL: 7 days (independent of the 24-hour storage cleanup)
+const SESSION_COOKIE_TTL_SECS = 60 * 60 * 24 * 7;
 
 export function sseResponse(
   fn: (send: (event: SSEEvent) => void) => Promise<void>,
@@ -37,17 +20,23 @@ export function sseResponse(
   });
 
   const send = (event: SSEEvent) => {
-    ctrl.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+    try {
+      ctrl.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+    } catch {
+      // controller already closed — drop the event
+    }
   };
 
-  fn(send).finally(() => ctrl.close());
+  fn(send)
+    .catch(() => send({ type: 'error', message: 'Internal server error' }))
+    .finally(() => ctrl.close());
 
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
-      'Set-Cookie': `openkova_session=${sessionId}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`,
+      'Set-Cookie': `openkova_session=${sessionId}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_COOKIE_TTL_SECS}`,
     },
   });
 }
