@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.2.1 — IPv6 SSRF patch
+
+### Security
+
+- **Critical fix: IPv6 SSRF bypass** — `isSafeHost` now correctly blocks all IPv6 private addresses. `URL.hostname` wraps IPv6 in brackets (`[::1]`) and normalises `::ffff:` mapped addresses to hex-group notation (`::ffff:c0a8:101`); the previous regex never matched either form, so `::1`, `fe80::`, `fc00::`, and all `::ffff:`-mapped private IPv4 addresses passed through unchecked. Fixed by stripping brackets and converting IPv4-mapped hex back to dotted decimal before testing.
+
+### Core package
+
+- Error messages thrown by `@openkova/core` are now prefixed with `@openkova/core:` for easier identification in consumer stack traces
+- `screenshotUrl` JSDoc now documents the `@throws` conditions (non-http/https URL, private host)
+
+### Docs
+
+- `crawlUrl`, `MAX_CRAWL_URLS`, and `screenshotUrl` throws are now documented in the npm README
+- Changelog linked from npm README to [openkova.dev/changelog](https://www.openkova.dev/changelog)
+
+---
+
 ## v0.2.0 — Security hardening & robustness
 
 ### Security
