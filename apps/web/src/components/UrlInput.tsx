@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { GalleryImage, OutputFormat, Viewport } from './ConverterTabs';
 import Terminal from './Terminal';
 import { useSSEStream } from '@/hooks/useSSEStream';
+import { PAGE_SIZE } from '@/lib/config';
 
 interface Props {
   sessionId: string | null;
@@ -12,8 +13,6 @@ interface Props {
   format: OutputFormat;
   onConversionComplete: (sessionId: string, images: GalleryImage[]) => void;
 }
-
-const PAGE_SIZE = 10;
 
 export default function UrlInput({ sessionId, viewport, fullPage, format, onConversionComplete }: Props) {
   const [url, setUrl] = useState('');

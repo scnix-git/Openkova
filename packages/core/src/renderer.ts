@@ -53,7 +53,7 @@ async function getLaunchOptions(): Promise<LaunchOptions> {
 
   if (executablePath === undefined) {
     throw new Error(
-      'No Chromium/Chrome executable found. ' +
+      '@openkova/core: No Chromium/Chrome executable found. ' +
       'Set CHROMIUM_PATH, install the "puppeteer" npm package, or install Chrome/Chromium system-wide.',
     );
   }
@@ -193,6 +193,8 @@ export function createRenderer(storage: StorageAdapter) {
   /**
    * Navigate to a URL in a headless browser and save the result.
    * Returns the imageId (includes file extension, e.g. `"abc123.png"`).
+   *
+   * @throws If `url` is not http/https or targets a private/loopback host.
    */
   async function screenshotUrl(
     url: string,
@@ -201,10 +203,10 @@ export function createRenderer(storage: StorageAdapter) {
   ): Promise<string> {
     const parsed = new URL(url);
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw new Error(`URL must use http or https: ${url}`);
+      throw new Error(`@openkova/core: URL must use http or https: ${url}`);
     }
     if (!isSafeHost(parsed.hostname)) {
-      throw new Error(`URL targets a private network: ${parsed.hostname}`);
+      throw new Error(`@openkova/core: URL targets a private network: ${parsed.hostname}`);
     }
     const viewport = options?.viewport ?? DEFAULT_VIEWPORT;
     const ext = FORMAT_EXT[options?.format ?? 'png'];

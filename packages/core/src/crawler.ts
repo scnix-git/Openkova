@@ -30,7 +30,7 @@ export async function crawlUrl(
 ): Promise<string[]> {
   const parsed = new URL(rootUrl);
   if (!isSafeHost(parsed.hostname)) {
-    throw new Error(`Crawling private/internal hosts is not allowed: ${parsed.hostname}`);
+    throw new Error(`@openkova/core: Crawling private/internal hosts is not allowed: ${parsed.hostname}`);
   }
 
   const origin = parsed.origin;
