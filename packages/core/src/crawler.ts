@@ -2,9 +2,13 @@ const LINK_REGEX = /<a\s[^>]*href=["']([^"']+)["']/gi;
 const FETCH_TIMEOUT = 10_000;
 
 // Block requests to private/loopback ranges to prevent SSRF.
+// Does not prevent DNS-rebinding; ::ffff: mapped IPv4 variants are covered.
 const PRIVATE_HOST_RE = /^(localhost|.*\.local)$/i;
 const PRIVATE_IP_RE =
-  /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|0\.|::1$|fc[\da-f]{2}:|fe80:)/i;
+  /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|0\.|::1$|fc[\da-f]{2}:|fe80:|::ffff:(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.))/i;
+
+/** Maximum number of URLs returned by {@link crawlUrl}. */
+export const MAX_CRAWL_URLS = 200;
 
 export function isSafeHost(hostname: string): boolean {
   return !PRIVATE_HOST_RE.test(hostname) && !PRIVATE_IP_RE.test(hostname);
@@ -12,7 +16,8 @@ export function isSafeHost(hostname: string): boolean {
 
 /**
  * Fetch `rootUrl`, extract all same-origin `<a href>` links, and return the
- * full list of URLs to capture (root first).
+ * full list of URLs to capture (root first). Results are capped at
+ * {@link MAX_CRAWL_URLS}.
  *
  * @param rootUrl    The starting URL. Must be http/https on a public host.
  * @param depth      1 = root + its direct links (default). Max 2.
@@ -45,17 +50,23 @@ export async function crawlUrl(
     return results;
   }
 
-  const firstLevel = extractSameOriginLinks(html, rootUrl, origin, seen);
+  const allFirstLevel = extractSameOriginLinks(html, rootUrl, origin, seen);
+  // root already occupies slot 0 — cap first-level links accordingly
+  const firstLevel = allFirstLevel.slice(0, MAX_CRAWL_URLS - 1);
   results.push(...firstLevel);
 
-  if (depth >= 2) {
+  if (depth >= 2 && firstLevel.length > 0) {
+    onProgress?.(`Following ${firstLevel.length} link${firstLevel.length !== 1 ? 's' : ''}…`);
     for (const link of firstLevel) {
-      onProgress?.(`Fetching ${link}`);
+      if (results.length >= MAX_CRAWL_URLS) break;
       try {
         const res = await fetch(link, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
         const subHtml = await res.text();
         const subLinks = extractSameOriginLinks(subHtml, link, origin, seen);
-        results.push(...subLinks);
+        for (const sub of subLinks) {
+          if (results.length >= MAX_CRAWL_URLS) break;
+          results.push(sub);
+        }
       } catch {
         // skip unreachable pages
       }
@@ -63,7 +74,8 @@ export async function crawlUrl(
   }
 
   const total = results.length;
-  onProgress?.(`Found ${total} page${total !== 1 ? 's' : ''} to capture`);
+  const limitNote = total >= MAX_CRAWL_URLS ? ` (capped at ${MAX_CRAWL_URLS})` : '';
+  onProgress?.(`Found ${total} page${total !== 1 ? 's' : ''}${limitNote} to capture`);
 
   return results;
 }

@@ -1,6 +1,6 @@
 {
   "name": "@openkova/core",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "HTML to image/PDF engine powered by Puppeteer. Render snippets, local HTML files, or live URLs to PNG, JPEG, WebP, or PDF — with configurable viewport, full-page capture, and pluggable storage.",
   "keywords": [
     "html-to-image",

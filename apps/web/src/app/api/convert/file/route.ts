@@ -1,10 +1,8 @@
 import { type NextRequest } from 'next/server';
-import { createSession, screenshotSnippet } from '@openkova/core';
+import { screenshotSnippet } from '@openkova/core';
 import { sseResponse } from '@/lib/sse';
-import { parseFormat, parseViewport } from '@/lib/parse';
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB per file
-const MAX_FILES = 20;
+import { parseFormat, parseViewport, resolveSessionId } from '@/lib/parse';
+import { MAX_FILES, MAX_FILE_SIZE } from '@/lib/config';
 
 export async function POST(req: NextRequest) {
   let formData: FormData;
@@ -30,11 +28,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: `File "${oversized.name}" exceeds 10 MB limit` }, { status: 413 });
   }
 
-  const providedSessionId = formData.get('sessionId');
-  const sessionId =
-    typeof providedSessionId === 'string' && providedSessionId.length > 0
-      ? providedSessionId
-      : createSession();
+  const sessionId = resolveSessionId(formData.get('sessionId'));
 
   const rawViewport = formData.get('viewport');
   let parsedViewport: unknown = null;

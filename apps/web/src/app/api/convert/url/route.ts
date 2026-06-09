@@ -1,9 +1,9 @@
 import { type NextRequest } from 'next/server';
-import { createSession, screenshotUrl, crawlUrl, isSafeHost } from '@openkova/core';
+import { screenshotUrl, crawlUrl, isSafeHost } from '@openkova/core';
 import { sseResponse } from '@/lib/sse';
-import { parseFormat, parseViewport } from '@/lib/parse';
+import { parseFormat, parseViewport, resolveSessionId } from '@/lib/parse';
+import { PAGE_SIZE } from '@/lib/config';
 
-const PAGE_SIZE = 10;
 const MAX_DIRECT_URLS = PAGE_SIZE;
 
 function isSafeUrl(url: string): boolean {
@@ -12,10 +12,6 @@ function isSafeUrl(url: string): boolean {
   } catch {
     return false;
   }
-}
-
-function resolveSessionId(raw: unknown): string {
-  return typeof raw === 'string' && raw.length > 0 ? raw : createSession();
 }
 
 export async function POST(req: NextRequest) {
@@ -40,6 +36,19 @@ export async function POST(req: NextRequest) {
     if (urls.length > MAX_DIRECT_URLS) {
       return Response.json({ error: `Too many URLs per request (max ${MAX_DIRECT_URLS})` }, { status: 400 });
     }
+
+    const badProtocol = urls.find((u) => {
+      try {
+        const { protocol } = new URL(u);
+        return protocol !== 'http:' && protocol !== 'https:';
+      } catch {
+        return true;
+      }
+    });
+    if (badProtocol) {
+      return Response.json({ error: 'url must use http or https' }, { status: 400 });
+    }
+
     const blocked = urls.find((u) => !isSafeUrl(u));
     if (blocked) {
       return Response.json({ error: `URL targets a private network: ${blocked}` }, { status: 400 });

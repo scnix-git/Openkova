@@ -1,9 +1,8 @@
 import { type NextRequest } from 'next/server';
-import { createSession, screenshotSnippet } from '@openkova/core';
+import { screenshotSnippet } from '@openkova/core';
 import { sseResponse } from '@/lib/sse';
-import { parseFormat, parseViewport } from '@/lib/parse';
-
-const MAX_HTML_BYTES = 5 * 1024 * 1024; // 5 MB
+import { parseFormat, parseViewport, resolveSessionId } from '@/lib/parse';
+import { MAX_HTML_BYTES } from '@/lib/config';
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -29,11 +28,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'html exceeds 5 MB limit' }, { status: 413 });
   }
 
-  const sessionId =
-    typeof providedSessionId === 'string' && providedSessionId.length > 0
-      ? providedSessionId
-      : createSession();
-
+  const sessionId = resolveSessionId(providedSessionId);
   const viewport = parseViewport(rawViewport);
   const format = parseFormat(rawFormat);
 

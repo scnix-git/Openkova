@@ -18,7 +18,7 @@ export async function GET(
   try {
     data = await storage.get(sessionId, id);
   } catch {
-    return new NextResponse(null, { status: 400 });
+    return NextResponse.json({ error: 'Invalid image ID' }, { status: 400 });
   }
 
   if (!data) {

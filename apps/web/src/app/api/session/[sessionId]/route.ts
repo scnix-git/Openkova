@@ -6,6 +6,13 @@ export async function GET(
   { params }: { params: Promise<{ sessionId: string }> },
 ) {
   const { sessionId } = await params;
-  const images = await storage.list(sessionId);
+
+  let images: string[];
+  try {
+    images = await storage.list(sessionId);
+  } catch {
+    return NextResponse.json({ error: 'Invalid session' }, { status: 400 });
+  }
+
   return NextResponse.json({ images });
 }

@@ -86,7 +86,7 @@ export default function UrlInput({ sessionId, viewport, fullPage, format, onConv
       await runStream(res, (data) => {
         const d = data as { sessionId: string; results: { imageId: string; url: string }[]; total: number };
         setRemaining(nextRemaining);
-        setCapturedCount(capturedCount + d.results.length);
+        setCapturedCount((prev) => prev + d.results.length);
         onConversionComplete(d.sessionId, d.results.map((r) => ({ imageId: r.imageId, label: r.url })));
       });
     } catch (err) {
