@@ -53,6 +53,20 @@ function slugFromUrl(url: string): string {
   }
 }
 
+async function uniqueFilename(dir: string, base: string, ext: string): Promise<string> {
+  let name = `${base}.${ext}`;
+  let counter = 1;
+  while (true) {
+    try {
+      await fs.access(path.join(dir, name));
+      name = `${base}-${counter}.${ext}`;
+      counter++;
+    } catch {
+      return name;
+    }
+  }
+}
+
 const sharedInputs = {
   format: z.enum(['png', 'jpeg', 'webp', 'pdf']).optional().describe('Output format (default: png)'),
   viewport_width: z.number().optional().describe('Viewport width in pixels (default: 1280)'),
@@ -96,9 +110,10 @@ server.registerTool(
     const captured = storage.pop()!;
     const ext = extFromImageId(imageId);
     const slug = slugFromUrl(args.url);
-    const filePath = path.join(outDir, `${slug}.${ext}`);
 
     await fs.mkdir(outDir, { recursive: true });
+    const filename = await uniqueFilename(outDir, slug, ext);
+    const filePath = path.join(outDir, filename);
     await fs.writeFile(filePath, captured.buffer);
 
     if (format === 'pdf') {
@@ -135,9 +150,10 @@ server.registerTool(
     const captured = storage.pop()!;
     const ext = extFromImageId(imageId);
     const baseName = args.name ?? 'snippet';
-    const filePath = path.join(outDir, `${baseName}.${ext}`);
 
     await fs.mkdir(outDir, { recursive: true });
+    const filename = await uniqueFilename(outDir, baseName, ext);
+    const filePath = path.join(outDir, filename);
     await fs.writeFile(filePath, captured.buffer);
 
     if (format === 'pdf') {
@@ -175,7 +191,6 @@ server.registerTool(
 
     await fs.mkdir(outDir, { recursive: true });
 
-    const seenSlugs = new Set<string>();
     const results: Array<{ url: string; file: string }> = [];
     const errors: Array<{ url: string; error: string }> = [];
 
@@ -184,13 +199,8 @@ server.registerTool(
         const imageId = await screenshotUrl(u, sessionId, { format, viewport, fullPage });
         const captured = storage.pop()!;
         const ext = extFromImageId(imageId);
-
-        let slug = slugFromUrl(u);
-        let counter = 1;
-        while (seenSlugs.has(slug)) slug = `${slugFromUrl(u)}-${counter++}`;
-        seenSlugs.add(slug);
-
-        const filePath = path.join(outDir, `${slug}.${ext}`);
+        const filename = await uniqueFilename(outDir, slugFromUrl(u), ext);
+        const filePath = path.join(outDir, filename);
         await fs.writeFile(filePath, captured.buffer);
         results.push({ url: u, file: filePath });
       } catch (err) {

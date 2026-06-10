@@ -48,6 +48,7 @@ if (values.help || positionals.length === 0) {
 
 function parseViewport(raw: string): Viewport {
   if (raw === 'mobile')  return { width: 390,  height: 800 };
+  if (raw === 'desktop') return { width: 1280, height: 800 };
   if (raw === 'wide')    return { width: 1920, height: 800 };
   const w = parseInt(raw, 10);
   return { width: isNaN(w) ? 1280 : w, height: 800 };
