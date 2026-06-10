@@ -49,6 +49,19 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
+  packages/cli:
+    dependencies:
+      '@openkova/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.12.4
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
   packages/core:
     dependencies:
       puppeteer-core:
