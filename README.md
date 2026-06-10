@@ -28,6 +28,33 @@ const imageId = await screenshotSnippet('<h1>Hello</h1>', sessionId, {
 
 See [`packages/core/README.md`](packages/core/README.md) for the full API reference.
 
+## Use as a CLI
+
+```bash
+npx @openkova/cli screenshot https://example.com
+npx @openkova/cli snippet --html '<h1>Hello</h1>' --format pdf
+npx @openkova/cli crawl https://example.com --depth 2 --out ./screenshots/
+```
+
+See [`packages/cli/README.md`](packages/cli/README.md) for all commands and flags.
+
+## Use with AI agents (MCP)
+
+Connect any MCP-compatible AI client (Claude Desktop, Cursor, Windsurf) to take screenshots locally:
+
+```json
+{
+  "mcpServers": {
+    "kova": {
+      "command": "npx",
+      "args": ["@openkova/mcp"]
+    }
+  }
+}
+```
+
+See [`packages/mcp/README.md`](packages/mcp/README.md) for setup and tool reference.
+
 ## Features
 
 - **HTML Snippet** — paste raw HTML and screenshot it at any viewport size
@@ -44,7 +71,7 @@ See [`packages/core/README.md`](packages/core/README.md) for the full API refere
 
 - [Next.js](https://nextjs.org) (App Router, standalone output)
 - [Puppeteer Core](https://pptr.dev) + system Chromium
-- [pnpm workspaces](https://pnpm.io/workspaces) monorepo — `packages/core` + `apps/web`
+- [pnpm workspaces](https://pnpm.io/workspaces) monorepo — `packages/core`, `packages/cli`, `packages/mcp`, `apps/web`
 - Deployed on [Railway](https://railway.app) via Docker
 
 ## Self-hosting
@@ -142,6 +169,8 @@ apps/
   web/          Next.js app (UI + API routes)
 packages/
   core/         Headless renderer, crawler, storage adapter
+  cli/          Command-line interface (npx @openkova/cli)
+  mcp/          Local MCP server for AI clients (npx @openkova/mcp)
 Dockerfile      Multi-stage build for Railway/Docker
 railway.toml    Railway deployment config
 ```

@@ -10,3 +10,4 @@ data/
 .turbo/
 packages/core/dist/
 apps/web/.next/
+kova-screenshots/
