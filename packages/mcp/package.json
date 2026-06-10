@@ -13,7 +13,8 @@
     "kova-mcp": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "engines": {
     "node": ">=18"
