@@ -4,6 +4,21 @@ Release history for Openkova and `@openkova/core`.
 
 ---
 
+## v0.3.0 — 11 Jun 2026
+
+CLI and MCP packages
+
+### New packages
+
+- **`@openkova/cli`** — command-line interface wrapping `@openkova/core`. Screenshot URLs, local HTML files, and inline snippets from the terminal or CI/CD pipelines. Supports all output formats and viewports. Run via `npx @openkova/cli`.
+- **`@openkova/mcp`** — local MCP server for AI clients (Claude Desktop, Cursor, Windsurf). Exposes `screenshot_url`, `screenshot_snippet`, and `crawl_url` as MCP tools. Returns screenshots as inline base64 images so the AI can see the result. Run via `npx @openkova/mcp`.
+
+### Core library (`@openkova/core`)
+
+- `createRenderer` is now part of the public API — exported from the package index, allowing consumers to bind a custom `StorageAdapter` without going through the default renderer.
+
+---
+
 ## v0.2.1 — 9 Jun 2026
 
 IPv6 SSRF patch
