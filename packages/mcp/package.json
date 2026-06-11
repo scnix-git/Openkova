@@ -1,0 +1,35 @@
+{
+  "name": "@openkova/mcp",
+  "version": "0.1.0",
+  "description": "Local MCP server for @openkova/core — screenshot URLs and HTML snippets from any MCP-compatible AI client.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scnix-git/Openkova.git",
+    "directory": "packages/mcp"
+  },
+  "type": "module",
+  "bin": {
+    "kova-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@openkova/core": "workspace:*",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.0.0"
+  }
+}

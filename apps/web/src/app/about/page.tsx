@@ -25,6 +25,26 @@ export default function AboutPage() {
           <li>Integrating screenshot generation into AI pipelines via MCP</li>
         </ul>
 
+        <h2>Ways to use Openkova</h2>
+        <ul>
+          <li>
+            <strong>Web UI</strong> — paste HTML, upload files, or enter a URL in the browser.
+          </li>
+          <li>
+            <strong>Library</strong> — <code>npm install @openkova/core</code> and call{' '}
+            <code>screenshotSnippet</code>, <code>screenshotUrl</code>, or <code>crawlUrl</code>{' '}
+            directly from your Node.js app.
+          </li>
+          <li>
+            <strong>CLI</strong> — <code>npx @openkova/cli screenshot https://example.com</code>{' '}
+            for terminal and CI/CD use.
+          </li>
+          <li>
+            <strong>MCP</strong> — <code>npx @openkova/mcp</code> connects Claude Desktop, Cursor,
+            and other AI clients to your local Chromium.
+          </li>
+        </ul>
+
         <h2>Open source</h2>
         <p>
           Openkova is MIT licensed and built in public. Contributions, bug reports, and feature

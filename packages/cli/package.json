@@ -1,0 +1,33 @@
+{
+  "name": "@openkova/cli",
+  "version": "0.1.0",
+  "description": "CLI for @openkova/core — screenshot URLs, HTML files, and snippets from the terminal.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scnix-git/Openkova.git",
+    "directory": "packages/cli"
+  },
+  "type": "module",
+  "bin": {
+    "kova": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch"
+  },
+  "dependencies": {
+    "@openkova/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -210,8 +210,10 @@ sessionId string   // optional form field`}</code>
 
         <h2>GET /api/image/:sessionId/:id</h2>
         <p>
-          Returns a single PNG screenshot with <code>Content-Type: image/png</code>. Use directly
-          as an <code>&lt;img src&gt;</code> or download link. Responses are cached for 1 hour (
+          Returns the screenshot file with the appropriate{' '}
+          <code>Content-Type</code> header (<code>image/png</code>, <code>image/jpeg</code>,{' '}
+          <code>image/webp</code>, or <code>application/pdf</code>). Use directly as an{' '}
+          <code>&lt;img src&gt;</code> or download link. Responses are cached for 1 hour (
           <code>Cache-Control: public, max-age=3600, immutable</code>).
         </p>
         <p>
@@ -236,6 +238,67 @@ sessionId string   // optional form field`}</code>
           <code>{`{ "images": ["uuid1", "uuid2", ...] }`}</code>
         </pre>
         <p>Returns an empty array if the session has no images or does not exist.</p>
+
+        <h2>CLI (<code>@openkova/cli</code>)</h2>
+        <p>
+          For terminal and CI/CD use — runs entirely locally against your own Chromium, no web
+          server needed.
+        </p>
+        <pre>
+          <code>{`# Install globally
+npm install -g @openkova/cli
+
+# Or run without installing
+npx @openkova/cli --help`}</code>
+        </pre>
+        <h3>Commands</h3>
+        <pre>
+          <code>{`kova screenshot <url|file>   Screenshot a URL or local HTML file
+kova snippet                Screenshot HTML from --html or stdin
+kova crawl <url>            Crawl a site and screenshot all pages`}</code>
+        </pre>
+        <h3>Flags</h3>
+        <pre>
+          <code>{`--format    png|jpeg|webp|pdf    Output format (default: png)
+--viewport  390|1280|1920        Viewport width, or mobile/desktop/wide (default: 1280)
+--full-page                      Capture full scrollable height
+--out       <dir>                Output directory (default: current directory)
+--depth     1|2                  Crawl depth, crawl command only (default: 1)
+--name      <name>               Filename without extension, snippet only (default: snippet)`}</code>
+        </pre>
+
+        <h2>MCP server (<code>@openkova/mcp</code>)</h2>
+        <p>
+          A local stdio MCP server for AI clients (Claude Desktop, Cursor, Windsurf). Runs against
+          your own Chromium — no API keys or external service required.
+        </p>
+        <h3>Setup</h3>
+        <pre>
+          <code>{`// claude_desktop_config.json / Cursor MCP settings
+{
+  "mcpServers": {
+    "kova": {
+      "command": "npx",
+      "args": ["@openkova/mcp"]
+    }
+  }
+}`}</code>
+        </pre>
+        <h3>Tools</h3>
+        <pre>
+          <code>{`screenshot_url(url, format?, viewport_width?, full_page?, out?)
+  → base64 image + saved file path
+
+screenshot_snippet(html, name?, format?, viewport_width?, full_page?, out?)
+  → base64 image + saved file path
+
+crawl_url(url, depth?, format?, viewport_width?, full_page?, out?)
+  → list of saved file paths`}</code>
+        </pre>
+        <p>
+          Screenshots are saved to <code>./kova-screenshots</code> by default. Override per call
+          with the <code>out</code> parameter or set <code>KOVA_OUTPUT_DIR</code>.
+        </p>
       </div>
     </main>
   );
