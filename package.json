@@ -1,6 +1,6 @@
 {
   "name": "openkova",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "scripts": {
     "build": "pnpm --filter @openkova/core build && pnpm --filter @openkova/web build",

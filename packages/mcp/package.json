@@ -1,6 +1,6 @@
 {
   "name": "@openkova/mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local MCP server for @openkova/core — screenshot URLs and HTML snippets from any MCP-compatible AI client.",
   "license": "MIT",
   "repository": {
@@ -16,6 +16,9 @@
     "dist",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=18"
   },
