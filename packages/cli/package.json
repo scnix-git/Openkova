@@ -1,6 +1,6 @@
 {
   "name": "@openkova/cli",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "CLI for @openkova/core — screenshot URLs, HTML files, and snippets from the terminal.",
   "license": "MIT",
   "repository": {
@@ -16,6 +16,9 @@
     "dist",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=18"
   },
