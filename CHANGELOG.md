@@ -4,7 +4,7 @@ Release history for Openkova and `@openkova/core`.
 
 ---
 
-## v0.3.0 — 11 Jun 2026
+## v0.3.1 — 11 Jun 2026
 
 CLI and MCP packages
 
