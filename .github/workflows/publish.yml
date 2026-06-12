@@ -1,4 +1,4 @@
-name: Publish @openkova/core
+name: Publish packages
 
 on:
   push:
@@ -27,9 +27,22 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm --filter @openkova/core build
+        run: |
+          pnpm --filter @openkova/core build
+          pnpm --filter @openkova/cli build
+          pnpm --filter @openkova/mcp build
 
-      - name: Publish
+      - name: Publish @openkova/core
         run: pnpm --filter @openkova/core publish --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @openkova/cli
+        run: pnpm --filter @openkova/cli publish --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @openkova/mcp
+        run: pnpm --filter @openkova/mcp publish --no-git-checks --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
