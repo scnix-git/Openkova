@@ -3,7 +3,19 @@
 [![npm](https://img.shields.io/npm/v/@openkova/core)](https://www.npmjs.com/package/@openkova/core)
 [![license](https://img.shields.io/github/license/scnix-git/Openkova)](LICENSE)
 
-Convert HTML to images. Paste a snippet, upload files, or point it at a URL — Openkova renders each page in a headless Chromium browser and returns a PNG, JPEG, WebP, or PDF file.
+Openkova is a self-hosted screenshot API that converts HTML to image and PDF. Paste a snippet, upload `.html` files, or point it at a live URL — Openkova renders each page in headless Chromium and returns a PNG, JPEG, WebP, or PDF.
+
+**MIT license — free for commercial use, no licensing restrictions.** (The main alternative, Browserless, uses SSPL-1.0, which requires a commercial license for closed-source use.)
+
+Full documentation and hosted version at **[openkova.dev](https://www.openkova.dev)** · [API docs](https://www.openkova.dev/screenshot-api) · [Docs](https://www.openkova.dev/docs) · [Blog](https://www.openkova.dev/blog)
+
+## Packages
+
+| Package | Description |
+|---|---|
+| [`@openkova/core`](packages/core/README.md) | Node.js library — headless Chromium renderer, crawler, and storage adapter. Powers the web app and CLI. |
+| [`@openkova/cli`](packages/cli/README.md) | CLI for screenshots from the terminal or CI/CD pipelines (`npx @openkova/cli`). |
+| [`@openkova/mcp`](packages/mcp/README.md) | Local MCP server for AI clients — Claude Desktop, Cursor, Windsurf (`npx @openkova/mcp`). |
 
 ## Use as a library
 
@@ -127,7 +139,7 @@ GET  /api/session/:sid           → { images: string[] }
 
 `format` accepts `"png"` (default), `"jpeg"`, `"webp"`, or `"pdf"`. The returned `imageId` includes the file extension (e.g. `abc123.jpg`).
 
-Full documentation is available at `/docs` in the running app.
+Full API documentation at [openkova.dev/screenshot-api](https://www.openkova.dev/screenshot-api).
 
 ### Quick example
 
@@ -189,4 +201,4 @@ Files are automatically deleted **24 hours** after the session directory was las
 
 ## License
 
-MIT
+[MIT](LICENSE) — free for commercial use, no licensing restrictions.

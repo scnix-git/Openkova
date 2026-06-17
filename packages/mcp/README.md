@@ -36,14 +36,36 @@ Add to your MCP settings:
 
 Restart your AI client after adding the config.
 
-## Requirements
+## Chromium
 
-A Chromium binary must be available. The easiest way is to install `puppeteer` globally or in the same project:
+`@openkova/mcp` launches its own headless Chrome process — it does not connect to a running Openkova instance or any external service.
+
+**Most desktop users need no extra setup.** The server auto-detects Chrome/Chromium in this order:
+
+1. `CHROMIUM_PATH` env var (if set)
+2. The `puppeteer` npm package (if installed — it bundles its own Chrome)
+3. A system-installed browser at the standard path for your OS
+
+If you have Google Chrome or Chromium already installed, `npx @openkova/mcp` works as-is.
+
+**No browser found?** Install `puppeteer` once:
 
 ```bash
 npm install -g puppeteer
-# or set the path manually:
-CHROMIUM_PATH=/usr/bin/chromium npx @openkova/mcp
+```
+
+Or point directly at any Chrome/Chromium binary:
+
+```json
+{
+  "mcpServers": {
+    "kova": {
+      "command": "npx",
+      "args": ["@openkova/mcp"],
+      "env": { "CHROMIUM_PATH": "/usr/bin/chromium" }
+    }
+  }
+}
 ```
 
 ## Tools
