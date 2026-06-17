@@ -12,11 +12,25 @@ npm install -g @openkova/cli
 npx @openkova/cli --help
 ```
 
-Requires a Chromium binary. Install `puppeteer` as a dev dependency (it bundles its own Chrome) or set `CHROMIUM_PATH`:
+## Chromium
+
+**Most users need no extra setup.** The CLI auto-detects Chrome/Chromium in this order:
+
+1. `CHROMIUM_PATH` env var (if set)
+2. The `puppeteer` npm package (if installed — it bundles its own Chrome)
+3. A system-installed browser at the standard path for your OS
+
+If you have Google Chrome or Chromium already installed, `kova` works as-is.
+
+**No browser found?** Install `puppeteer` once:
 
 ```bash
-npm install -D puppeteer
-# or
+npm install -g puppeteer
+```
+
+Or point directly at any Chrome/Chromium binary:
+
+```bash
 CHROMIUM_PATH=/usr/bin/chromium kova screenshot https://example.com
 ```
 
