@@ -1,8 +1,8 @@
 # @openkova/core
 
-HTML to image/PDF engine powered by Puppeteer. Render snippets, local HTML files, or live URLs to pixel-accurate PNG, JPEG, WebP, or PDF files — with configurable viewport, full-page capture, output format, and pluggable storage.
+Node.js library for HTML to image and PDF conversion. Powers a self-hosted screenshot API — render snippets, local HTML files, or live URLs to pixel-accurate PNG, JPEG, WebP, or PDF using headless Chromium. Configurable viewport, full-page capture, output format, and pluggable storage.
 
-**Website & docs:** [openkova.dev](https://www.openkova.dev)
+**Website:** [openkova.dev](https://www.openkova.dev) · [API docs](https://www.openkova.dev/screenshot-api) · [Docs](https://www.openkova.dev/docs) · [Blog](https://www.openkova.dev/blog)
 
 ## Install
 
