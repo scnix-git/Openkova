@@ -1,6 +1,6 @@
 {
   "name": "@openkova/cli",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "CLI for @openkova/core — screenshot URLs, HTML files, and snippets from the terminal.",
   "license": "MIT",
   "repository": {
