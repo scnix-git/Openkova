@@ -4,6 +4,19 @@ Release history for Openkova and `@openkova/core`.
 
 ---
 
+## v0.3.2 — 18 Jun 2026
+
+Documentation and discoverability
+
+### Documentation
+
+- **README** — opening description now includes "self-hosted screenshot API", "HTML to image", and "headless Chromium" keyword signals; prominent MIT license callout with comparison to SSPL-1.0 alternatives; packages table listing all three packages; links to [openkova.dev/screenshot-api](https://www.openkova.dev/screenshot-api), [/docs](https://www.openkova.dev/docs), and [/blog](https://www.openkova.dev/blog).
+- **`@openkova/core`** npm README — updated opening description with the same keyword signals; expanded site link to include `/screenshot-api`, `/docs`, `/blog`.
+- **`@openkova/cli`** npm README — added openkova.dev links (previously had none).
+- **`@openkova/mcp`** npm README — added openkova.dev links (previously had none).
+
+---
+
 ## v0.3.1 — 11 Jun 2026
 
 CLI and MCP packages
