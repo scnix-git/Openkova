@@ -4,6 +4,8 @@ Local MCP server for `@openkova/core` — lets any MCP-compatible AI client (Cla
 
 Runs entirely on your machine. No API keys, no external service, no cost per screenshot.
 
+**Website:** [openkova.dev](https://www.openkova.dev) · [Docs](https://www.openkova.dev/docs) · [Blog](https://www.openkova.dev/blog)
+
 ## Setup
 
 ### Claude Desktop
