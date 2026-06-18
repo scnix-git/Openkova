@@ -4,6 +4,8 @@ Command-line interface for `@openkova/core` — screenshot URLs, local HTML file
 
 Runs entirely locally. Uses your own Chromium — no network calls to any external service.
 
+**Website:** [openkova.dev](https://www.openkova.dev) · [Docs](https://www.openkova.dev/docs) · [Blog](https://www.openkova.dev/blog)
+
 ## Install
 
 ```bash
