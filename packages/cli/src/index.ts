@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { closeBrowser } from '@openkova/core';
 import type { OutputFormat, Viewport } from '@openkova/core';
@@ -11,15 +12,16 @@ const HELP = `
 kova — HTML to image CLI
 
 Commands:
-  kova screenshot <url|file>   Screenshot a URL or local HTML file
-  kova snippet                 Screenshot HTML from --html flag or stdin
-  kova crawl <url>             Crawl a site and screenshot all pages
+  kova screenshot <url|file> [url2 ...]   Screenshot one or more URLs or local HTML files
+  kova snippet                            Screenshot HTML from --html flag or stdin
+  kova crawl <url>                        Crawl a site and screenshot all pages
 
 Flags:
   --format    png|jpeg|webp|pdf    Output format (default: png)
   --viewport  390|1280|1920        Viewport width in px, or mobile/desktop/wide (default: 1280)
   --full-page                      Capture full scrollable height
   --out       <dir>                Output directory (default: current directory)
+  --batch     <file>               File of URLs/paths to screenshot, one per line (screenshot command only)
   --depth     1|2                  Crawl depth, crawl command only (default: 1)
   --html      "<html>"             HTML string, snippet command only
   --name      <filename>           Output filename without extension, snippet command only (default: snippet)
@@ -35,6 +37,7 @@ const { values, positionals } = parseArgs({
     'full-page': { type: 'boolean', default: false },
     out:         { type: 'string',  default: '.' },
     depth:       { type: 'string',  default: '1' },
+    batch:       { type: 'string' },
     html:        { type: 'string' },
     name:        { type: 'string',  default: 'snippet' },
     help:        { type: 'boolean', default: false },
@@ -69,12 +72,17 @@ const out      = path.resolve(values.out ?? '.');
 async function main(): Promise<void> {
   switch (command) {
     case 'screenshot': {
-      const target = positionals[1];
-      if (!target) {
-        console.error('Error: URL or file path required\n\nUsage: kova screenshot <url|file>');
+      const targets = positionals.slice(1);
+      if (values.batch) {
+        const raw = await fs.readFile(values.batch, 'utf8');
+        const lines = raw.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+        targets.push(...lines);
+      }
+      if (targets.length === 0) {
+        console.error('Error: URL or file path required\n\nUsage: kova screenshot <url|file> [url2 ...]\n       kova screenshot --batch urls.txt');
         process.exit(1);
       }
-      await runScreenshot({ target, format, viewport, fullPage, out });
+      await runScreenshot({ targets, format, viewport, fullPage, out });
       break;
     }
 

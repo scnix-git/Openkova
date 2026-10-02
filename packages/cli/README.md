@@ -38,13 +38,19 @@ CHROMIUM_PATH=/usr/bin/chromium kova screenshot https://example.com
 
 ## Commands
 
-### `kova screenshot <url|file>`
+### `kova screenshot <url|file> [url2 ...]`
 
-Screenshot a live URL or a local `.html` file.
+Screenshot one or more URLs or local `.html` files. Pass multiple targets directly, or use `--batch` to read them from a file.
 
 ```bash
 kova screenshot https://example.com
 kova screenshot ./index.html --format pdf --out ./output/
+
+# Multiple URLs at once
+kova screenshot https://example.com https://github.com https://npmjs.com --out ./shots/
+
+# From a file (one URL per line, # comments supported)
+kova screenshot --batch urls.txt --out ./shots/
 ```
 
 ### `kova snippet`
@@ -72,6 +78,7 @@ kova crawl https://example.com --depth 2 --format jpeg --out ./screenshots/
 | `--viewport` | `1280` | Width in px, or `mobile` (390), `desktop` (1280), `wide` (1920) |
 | `--full-page` | off | Capture full scrollable height |
 | `--out` | `.` | Output directory |
+| `--batch` | — | File of URLs/paths to screenshot, one per line, `screenshot` command only |
 | `--depth` | `1` | Crawl depth (`1` or `2`), `crawl` command only |
 | `--name` | `snippet` | Output filename without extension, `snippet` command only |
 

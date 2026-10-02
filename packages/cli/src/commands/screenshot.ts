@@ -6,42 +6,58 @@ import { CliStorageAdapter } from '../storage.js';
 import { slugFromUrl, extFromImageId, uniqueFilename } from '../utils.js';
 
 export async function runScreenshot(opts: {
-  target: string;
+  targets: string[];
   format: OutputFormat;
   viewport: Viewport;
   fullPage: boolean;
   out: string;
 }): Promise<void> {
-  const isUrl = opts.target.startsWith('http://') || opts.target.startsWith('https://');
-
   const storage = new CliStorageAdapter(opts.out);
   const { screenshotUrl, screenshotSnippet } = createRenderer(storage);
   const sessionId = createSession();
 
-  let imageId: string;
-  let slug: string;
+  const failures: { target: string; message: string }[] = [];
 
-  if (isUrl) {
-    imageId = await screenshotUrl(opts.target, sessionId, {
-      format: opts.format,
-      viewport: opts.viewport,
-      fullPage: opts.fullPage,
-      onProgress: (msg: string) => process.stdout.write(`  ${msg}\n`),
-    });
-    slug = slugFromUrl(opts.target);
-  } else {
-    const html = await fs.readFile(opts.target, 'utf8');
-    imageId = await screenshotSnippet(html, sessionId, {
-      format: opts.format,
-      viewport: opts.viewport,
-      fullPage: opts.fullPage,
-    });
-    slug = path.basename(opts.target, path.extname(opts.target));
+  for (const target of opts.targets) {
+    try {
+      const isUrl = target.startsWith('http://') || target.startsWith('https://');
+      let imageId: string;
+      let slug: string;
+
+      if (isUrl) {
+        imageId = await screenshotUrl(target, sessionId, {
+          format: opts.format,
+          viewport: opts.viewport,
+          fullPage: opts.fullPage,
+          onProgress: (msg: string) => process.stdout.write(`  ${msg}\n`),
+        });
+        slug = slugFromUrl(target);
+      } else {
+        const html = await fs.readFile(target, 'utf8');
+        imageId = await screenshotSnippet(html, sessionId, {
+          format: opts.format,
+          viewport: opts.viewport,
+          fullPage: opts.fullPage,
+        });
+        slug = path.basename(target, path.extname(target));
+      }
+
+      const ext = extFromImageId(imageId);
+      const finalName = await uniqueFilename(opts.out, slug, ext);
+      await fs.rename(path.join(opts.out, imageId), path.join(opts.out, finalName));
+
+      console.log(`✓ ${target} → ${path.join(opts.out, finalName)}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`✗ ${target}: ${message}`);
+      failures.push({ target, message });
+    }
   }
 
-  const ext = extFromImageId(imageId);
-  const finalName = await uniqueFilename(opts.out, slug, ext);
-  await fs.rename(path.join(opts.out, imageId), path.join(opts.out, finalName));
+  if (opts.targets.length > 1) {
+    const succeeded = opts.targets.length - failures.length;
+    console.log(`\n${succeeded}/${opts.targets.length} completed`);
+  }
 
-  console.log(`✓ ${opts.target} → ${path.join(opts.out, finalName)}`);
+  if (failures.length > 0) process.exit(1);
 }
